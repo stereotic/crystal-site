@@ -3,7 +3,13 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npm start:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(vercel --version)",
+      "Bash(vercel login:*)",
+      "Bash(vercel --yes)",
+      "Bash(vercel --name crystal-site --yes)",
+      "Bash(rm -rf api/auth api/cart api/deposit api/withdraw api/user api/premium api/orders api/support api/ref)",
+      "Bash(rm -f api/cards.js api/regions.js api/my-cards.js api/wallets.js api/rates.js)"
     ]
   }
 }
