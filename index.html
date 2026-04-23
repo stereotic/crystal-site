@@ -1,0 +1,1517 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
+    <title>Crystal Cards – Elite Marketplace</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        html, body { max-width: 100%; overflow-x: hidden; height: 100%; }
+        body {
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(-45deg, #050505, #0a0f1e, #050a14, #050505);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(44,100,227,0.15) 0%, #050505 100%);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+        #preloader i { font-size: 80px; color: #2c64e3; text-shadow: 0 0 30px rgba(44,100,227,0.8); animation: spin 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.1); } 100% { transform: rotate(360deg) scale(1); } }
+        .container { width: 100%; max-width: 500px; padding: 1rem; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; gap: 1rem; }
+        .glass-card {
+            background: rgba(20,20,25,0.65);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 32px;
+            padding: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+            transition: transform 0.2s ease;
+            animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        h2 { font-size: 24px; font-weight: 700; margin-bottom: 16px; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        input, button, select {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 24px;
+            border: none;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.2s ease;
+            min-height: 3.25rem;
+        }
+        input, select {
+            background: rgba(17, 24, 39, 0.8);
+            border: 1px solid rgba(148,163,184,0.15);
+            color: #fff;
+            margin-bottom: 12px;
+        }
+        input:focus, select:focus {
+            border-color: #2c64e3;
+            background: rgba(24, 34, 53, 0.9);
+            box-shadow: 0 0 15px rgba(44,100,227,0.2);
+        }
+        button {
+            background: linear-gradient(135deg, #2c64e3, #1e4bb3);
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 15px rgba(44,100,227,0.3);
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(44,100,227,0.5); }
+        button.secondary {
+            background: transparent;
+            border: 1px solid rgba(148,163,184,0.3);
+            color: #e2e8f0;
+            box-shadow: none;
+        }
+        button.secondary:hover { background: rgba(255,255,255,0.05); border-color: #2c64e3; }
+        .link-btn {
+            background: none;
+            border: none;
+            color: #2c64e3;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 5px;
+            width: auto;
+            align-self: flex-start;
+            padding: 0;
+            min-height: auto;
+            box-shadow: none;
+        }
+        .hidden { display: none !important; }
+        .bottom-nav {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 32px);
+            max-width: 460px;
+            background: rgba(15, 15, 20, 0.85);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 40px;
+            padding: 8px 14px;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            z-index: 100;
+            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes slideUp { from { transform: translate(-50%, 30px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            color: #64748b;
+            font-size: 18px;
+            transition: all 0.2s ease;
+            flex: 1;
+        }
+        .nav-item.active {
+            background: linear-gradient(135deg, #2c64e3, #1e4bb3);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(44,100,227,0.4);
+            transform: translateY(-2px);
+        }
+        .nav-item i { font-size: 22px; margin-bottom: 2px; }
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 90px;
+            gap: 1rem;
+        }
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 12px 12px 12px;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background: rgba(5, 5, 5, 0.4);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-radius: 0 0 24px 24px;
+            margin: 0 -1rem 0 -1rem;
+        }
+        .app-header .logo { font-size: 32px; color: #2c64e3; text-shadow: 0 0 20px rgba(44,100,227,0.6); margin-left: 1rem; }
+        .app-header .right {
+            font-size: 15px;
+            font-weight: 600;
+            color: #e2e8f0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            min-width: 140px;
+            text-align: right;
+            margin-right: 1rem;
+        }
+        .currency-dropdown {
+            position: absolute;
+            top: 70px;
+            right: 16px;
+            background: rgba(20,20,25,0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 8px;
+            z-index: 40;
+            animation: fadeIn 0.2s ease;
+        }
+        .currency-dropdown .currency-option {
+            font-size: 15px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .currency-dropdown .currency-option:hover { background: rgba(44,100,227,0.2); color: #2c64e3; }
+        .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .avatar {
+            font-size: 32px;
+            cursor: pointer;
+            width: 64px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(44,100,227,0.4), rgba(30,75,179,0.2));
+            border-radius: 50%;
+            border: 1px solid rgba(44,100,227,0.3);
+            transition: 0.2s;
+        }
+        .avatar:hover { transform: scale(1.05); }
+        .user-info { flex: 1; }
+        .user-info .username { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+        .user-info .status { font-size: 14px; color: #94a3b8; font-weight: 500; }
+        .logout-btn {
+            background: rgba(255, 77, 77, 0.1);
+            border: 1px solid rgba(255, 77, 77, 0.3);
+            color: #ff4d4d;
+            border-radius: 40px;
+            padding: 8px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            width: auto;
+            min-height: auto;
+            margin: 0;
+            box-shadow: none;
+        }
+        .logout-btn:hover { background: #ff4d4d; color: #fff; }
+        .balance-block {
+            background: rgba(17, 24, 39, 0.6);
+            border-radius: 24px;
+            padding: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .balance-block:hover { border-color: rgba(44,100,227,0.3); background: rgba(17, 24, 39, 0.8); }
+        .balance-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-size: 36px;
+            font-weight: 800;
+        }
+        .balance-display i { font-size: 32px; color: #2c64e3; }
+        .action-buttons { display: flex; gap: 16px; margin-bottom: 24px; }
+        .action-buttons button { flex: 1; padding: 16px 0; font-size: 16px; font-weight: 700; margin: 0; }
+        .btn-withdraw { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+        .btn-deposit { background: linear-gradient(135deg, #10b981, #047857); }
+        .premium-block {
+            background: linear-gradient(145deg, rgba(42,42,48,0.8), rgba(26,26,31,0.9));
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .premium-title { font-weight: 800; font-size: 18px; color: #ffd700; }
+        .premium-sub { font-size: 14px; color: #94a3b8; }
+        .premium-button {
+            background: linear-gradient(135deg, #ffd700, #f59e0b);
+            color: #000;
+            border: none;
+            border-radius: 40px;
+            padding: 10px 24px;
+            font-weight: 800;
+            cursor: pointer;
+            width: auto;
+            margin: 0;
+        }
+        .my-cards-title { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+        .cards-container {
+            background: rgba(17, 24, 39, 0.6);
+            border-radius: 24px;
+            padding: 16px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .card-item {
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 16px 0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.1s;
+        }
+        .card-item:hover { background: rgba(255,255,255,0.02); border-radius: 12px; }
+        .card-info { flex: 1; }
+        .card-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .card-details { font-size: 13px; color: #94a3b8; display: flex; gap: 8px; flex-wrap: wrap; }
+        .eye-icon { color: #2c64e3; font-size: 22px; padding: 12px; cursor: pointer; }
+        .empty-cards { color: #64748b; text-align: center; padding: 30px 0; }
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .filter-select { font-size: 14px; font-weight: 600; border-radius: 16px; }
+        .table-container {
+            overflow-y: auto;
+            border-radius: 24px;
+            background: rgba(17, 24, 39, 0.6);
+            padding: 8px;
+            max-height: 450px;
+        }
+        .cards-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 14px;
+        }
+        .cards-table th {
+            text-align: left;
+            padding: 12px 10px;
+            color: #64748b;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            position: sticky;
+            top: 0;
+            background: rgba(17, 24, 39, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+        .cards-table td {
+            padding: 14px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            font-weight: 500;
+        }
+        .cards-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .badge {
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-block;
+            text-align: center;
+        }
+        .badge.standard { background: linear-gradient(135deg, #4b5563, #374151); }
+        .badge.gold { background: linear-gradient(135deg, #fbbf24, #d97706); }
+        .badge.platinum { background: linear-gradient(135deg, #9ca3af, #4b5563); }
+        .badge.business { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .support-chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 450px;
+            background: rgba(17, 24, 39, 0.6);
+            border-radius: 24px;
+            padding: 16px;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .message-wrapper { display: flex; width: 100%; }
+        .message-wrapper.user { justify-content: flex-end; }
+        .message-wrapper.admin { justify-content: flex-start; }
+        .message-bubble {
+            max-width: 85%;
+            padding: 14px 18px;
+            border-radius: 20px;
+            word-wrap: break-word;
+            font-size: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .message-bubble.user {
+            background: linear-gradient(135deg, #2c64e3, #1e4bb3);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        .message-bubble.admin {
+            background: rgba(42, 42, 48, 0.8);
+            border: 1px solid rgba(255,255,255,0.05);
+            color: #eee;
+            border-bottom-left-radius: 4px;
+        }
+        .message-time { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 6px; text-align: right; }
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 30px;
+            padding: 6px;
+            align-items: center;
+        }
+        .chat-input-area input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 12px 16px;
+            color: #fff;
+            margin: 0;
+        }
+        .chat-input-area button {
+            width: auto;
+            padding: 12px 24px;
+            border-radius: 24px;
+            margin: 0;
+        }
+        .file-btn { cursor: pointer; padding: 10px 14px; color: #94a3b8; font-size: 20px; }
+        .premium-chat-container {
+            position: relative;
+            height: 400px;
+            border-radius: 24px;
+            background: rgba(17, 24, 39, 0.6);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .premium-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            transition: filter 0.4s ease;
+        }
+        .premium-chat-container:not(.premium-active) .premium-chat-messages { filter: blur(8px); opacity: 0.5; }
+        .premium-chat-lock {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 10;
+        }
+        .premium-chat-lock i { font-size: 56px; color: #ffd700; margin-bottom: 16px; }
+        .premium-chat-input {
+            display: flex;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.4);
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .premium-chat-input input {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 12px 16px;
+            color: #fff;
+            margin: 0;
+        }
+        .premium-chat-input button {
+            width: auto;
+            border-radius: 20px;
+            padding: 12px 24px;
+            margin: 0;
+        }
+        .chat-message {
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #e2e8f0;
+            background: rgba(0,0,0,0.2);
+            padding: 10px 14px;
+            border-radius: 16px;
+        }
+        .chat-message .name { color: #5a8cff; font-weight: 700; margin-right: 4px; }
+        .chat-message .time { color: #64748b; font-size: 11px; margin-left: 8px; float: right; }
+        .orders-container { display: flex; flex-direction: column; gap: 24px; }
+        .orders-input { display: flex; gap: 12px; flex-wrap: wrap; }
+        .orders-input input { flex: 1; min-width: 120px; }
+        .balance-result {
+            font-size: 28px;
+            font-weight: 800;
+            color: #2c64e3;
+            text-align: center;
+            padding: 30px;
+            background: rgba(17, 24, 39, 0.6);
+            border-radius: 24px;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(16px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 1rem;
+            animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .modal-content {
+            background: linear-gradient(180deg, rgba(20,24,39,0.95), rgba(10,12,20,0.95));
+            border-radius: 32px;
+            padding: 24px;
+            max-width: 380px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(255, 68, 68, 0.1);
+            color: #ff4444;
+            border: 1px solid rgba(255, 68, 68, 0.2);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 0;
+            box-shadow: none;
+        }
+        .modal-close:hover { background: #ff4444; color: #fff; transform: rotate(90deg) scale(1.1); }
+        .modal-header h3 { font-size: 22px; font-weight: 800; margin: 0 0 20px 0; text-align: center; }
+        .amount-grid {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 24px 0;
+        }
+        .amount-btn {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            width: 65px;
+            height: 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+        }
+        .amount-btn.selected {
+            background: linear-gradient(135deg, #2c64e3, #1e4bb3);
+            border-color: #5a8cff;
+            transform: scale(1.05);
+        }
+        .custom-amount { display: flex; gap: 12px; margin: 20px 0; }
+        .custom-amount input { flex: 1; margin: 0; }
+        .custom-amount button { width: auto; padding: 14px 20px; margin: 0; }
+        .method-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .method-btn {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 14px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        .method-btn.active { border-color: #2c64e3; background: rgba(44,100,227,0.15); }
+        .method-btn i { font-size: 24px; color: #e2e8f0; }
+        .wallet-address {
+            background: rgba(0,0,0,0.6);
+            padding: 16px;
+            border-radius: 16px;
+            word-break: break-all;
+            font-size: 14px;
+            margin: 16px 0;
+            cursor: pointer;
+            text-align: center;
+        }
+        .crypto-amount {
+            font-size: 20px;
+            font-weight: 800;
+            color: #2c64e3;
+            text-align: center;
+            margin: 16px 0;
+        }
+        .check-payment-btn { background: linear-gradient(135deg, #10b981, #047857); margin-top: 12px; }
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            justify-items: center;
+            padding: 10px 0;
+        }
+        .avatar-option {
+            width: 70px;
+            height: 70px;
+            background: rgba(44,100,227,0.25);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 32px;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        .avatar-option.selected { background: linear-gradient(135deg, #2c64e3, #1e4bb3); border-color: #fff; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        @media (max-width: 480px) {
+            .container { padding: 0.5rem; }
+            .glass-card { padding: 16px; }
+            .amount-btn { width: 55px; height: 55px; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px;
+            height: 20px;
+        }
+        @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
+</head>
+<body>
+<div id="preloader"><i class="fas fa-gem"></i></div>
+<div class="container" id="app">
+    <div class="app-header">
+        <i class="fas fa-gem logo"></i>
+        <div class="right" id="headerRight"></div>
+    </div>
+    <div id="mainView" class="main-content">
+        <!-- Auth -->
+        <div id="authView" class="glass-card">
+            <h2>Welcome to Crystal</h2>
+            <p style="color:#94a3b8; margin-bottom: 20px;">Enter your username and password</p>
+            <div class="auth-container">
+                <div class="auth-toggle" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button id="loginToggle" class="secondary auth-toggle-btn active" onclick="switchAuthMode('login')">Login</button>
+                    <button id="registerToggle" class="secondary auth-toggle-btn" onclick="switchAuthMode('register')">Register</button>
+                </div>
+                <div id="authError" style="color:#ff4d4d; margin-bottom:10px;"></div>
+                <div id="loginStep">
+                    <input type="text" id="loginUsername" placeholder="Username or email">
+                    <input type="password" id="loginPassword" placeholder="Password">
+                    <button onclick="login(event)">Login</button>
+                    <button class="link-btn" onclick="showForgot()">Forgot password?</button>
+                </div>
+                <div id="registerStep" class="hidden">
+                    <input type="text" id="regUsername" placeholder="Username">
+                    <input type="email" id="regEmail" placeholder="Email (optional)">
+                    <input type="password" id="regPassword" placeholder="Password (min 6)">
+                    <div id="emailVerificationBlock" style="margin-bottom:12px; display:none;">
+                        <div id="emailCodeStatus"></div>
+                        <input type="text" id="regEmailCode" placeholder="Verification code" style="display:none;">
+                        <button type="button" id="sendEmailCodeBtn" onclick="sendEmailCode()" class="secondary" style="margin-top:5px; display:none;">Send code</button>
+                    </div>
+                    <button onclick="registerUser(event)">Create account</button>
+                    <button class="link-btn" onclick="switchAuthMode('login')">Already have an account?</button>
+                </div>
+                <div id="forgotStep" class="forgot-step hidden">
+                    <p style="margin-bottom:16px;">Enter your email or username to reset password.</p>
+                    <input type="email" id="forgotEmail" placeholder="Email">
+                    <input type="text" id="forgotUsername" placeholder="Username (optional)">
+                    <button onclick="sendForgot(event)">Send reset link</button>
+                    <button class="secondary" onclick="switchAuthMode('login')">Back</button>
+                </div>
+            </div>
+        </div>
+        <!-- Main Content -->
+        <div id="appContent" class="hidden">
+            <div id="shopView" class="glass-card">
+                <div class="filters">
+                    <select id="typeFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="all">All Types</option>
+                        <option value="Standard">Standard</option>
+                        <option value="Gold">Gold</option>
+                        <option value="Platinum">Platinum</option>
+                        <option value="Business">Business</option>
+                    </select>
+                    <select id="regionFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="all">All Regions</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table class="cards-table">
+                        <thead>
+                            <tr>
+                                <th>Card</th><th>Exp</th><th>Holder</th><th>Region</th><th>Type</th><th>Price</th><th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="cardsList"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="ordersView" class="glass-card hidden">
+                <h2>Orders</h2>
+                <div id="ordersContent" class="orders-container"></div>
+            </div>
+            <div id="profileView" class="glass-card hidden">
+                <div class="profile-card">
+                    <div class="profile-header">
+                        <div class="avatar" onclick="openAvatarModal()" id="avatarDisplay"><i class="fas fa-user-secret"></i></div>
+                        <div class="user-info">
+                            <div class="username" id="profileUsername">testuser</div>
+                            <div class="status" id="premiumStatusText">Standard</div>
+                        </div>
+                        <button class="logout-btn" onclick="logout()">Exit</button>
+                    </div>
+                    <div class="balance-block" onclick="cycleCurrency()">
+                        <div class="balance-display">
+                            <i class="fas fa-dollar-sign" id="balanceIcon"></i>
+                            <span id="balanceDisplay">0.00</span>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-withdraw" onclick="openWithdrawModal()">Withdraw</button>
+                        <button class="btn-deposit" onclick="openDepositModal()">Deposit</button>
+                    </div>
+                    <div class="premium-block" id="premiumUpgradeBlock">
+                        <div><div class="premium-title">✨ Premium Access</div><div class="premium-sub">Unlock exclusive features</div></div>
+                        <button class="premium-button" onclick="openPremiumModal()">$220</button>
+                    </div>
+                    <div class="my-cards-title">My Cards</div>
+                    <div id="myCardsContainer" class="cards-container"><div class="empty-cards">💳 You haven't purchased any cards yet</div></div>
+                </div>
+            </div>
+            <div id="chatView" class="glass-card hidden">
+                <h2>Premium Chat</h2>
+                <div class="premium-chat-container" id="premiumChatContainer">
+                    <div id="premiumChatMessages" class="premium-chat-messages"></div>
+                    <div id="premiumChatLock" class="premium-chat-lock">
+                        <i class="fas fa-lock"></i>
+                        <p>Premium only</p>
+                        <button onclick="openPremiumModal()">Unlock Premium</button>
+                    </div>
+                    <div id="premiumChatInputArea" class="premium-chat-input hidden">
+                        <input type="text" id="premiumMsgInput" placeholder="Type a message...">
+                        <button onclick="sendPremiumMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+            <div id="supportView" class="glass-card hidden">
+                <h2>Support</h2>
+                <div class="support-chat-container">
+                    <div class="chat-messages" id="chatBox"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="msgInput" placeholder="Type your message...">
+                        <label for="fileInput" class="file-btn"><i class="fas fa-paperclip"></i></label>
+                        <input type="file" id="fileInput" accept="image/*,video/*,application/pdf,application/zip,application/x-rar-compressed" style="display:none;" onchange="uploadFile()">
+                        <button onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="bottom-nav hidden" id="bottomNav">
+        <div class="nav-item active" data-tab="shop" onclick="switchTab('shop')"><i class="fas fa-store"></i></div>
+        <div class="nav-item" data-tab="orders" onclick="switchTab('orders')"><i class="fas fa-search"></i></div>
+        <div class="nav-item" data-tab="profile" onclick="switchTab('profile')"><i class="fas fa-user"></i></div>
+        <div class="nav-item" data-tab="chat" onclick="switchTab('chat')"><i class="fas fa-comment-dots"></i></div>
+        <div class="nav-item" data-tab="support" onclick="switchTab('support')"><i class="fas fa-headset"></i></div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="depositModal" class="modal hidden">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeDepositModal()">✕</button>
+        <div class="modal-header"><h3>Deposit</h3></div>
+        <div class="amount-grid">
+            <div class="amount-btn" onclick="selectDepositAmount(150)">150</div>
+            <div class="amount-btn" onclick="selectDepositAmount(300)">300</div>
+            <div class="amount-btn" onclick="selectDepositAmount(500)">500</div>
+            <div class="amount-btn" onclick="selectDepositAmount(1000)">1000</div>
+        </div>
+        <div class="custom-amount">
+            <input type="number" id="customDepositAmount" placeholder="Custom amount" min="1">
+            <button onclick="setCustomDeposit()" class="btn-deposit">Set</button>
+        </div>
+        <div class="method-grid" id="methodGrid"></div>
+        <div class="crypto-amount" id="cryptoAmount"></div>
+        <div class="wallet-address" id="walletAddressText" onclick="copyAddress()">Loading...</div>
+        <button onclick="requestDeposit()" class="check-payment-btn" style="width:100%">Check Payment</button>
+    </div>
+</div>
+
+<div id="withdrawModal" class="modal hidden">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeWithdrawModal()">✕</button>
+        <div class="modal-header"><h3>Withdraw</h3></div>
+        <div class="amount-input"><input type="number" id="withdrawAmount" placeholder="Amount in USD" min="1"></div>
+        <div class="method-grid" id="withdrawMethodGrid"></div>
+        <div class="amount-input"><input type="text" id="withdrawAddress" placeholder="Your wallet address"></div>
+        <div class="amount-input"><input type="password" id="withdrawPassword" placeholder="Confirm password"></div>
+        <div class="crypto-amount" id="withdrawCryptoAmount"></div>
+        <div style="display:flex;gap:12px;margin-top:20px">
+            <button class="btn-withdraw" style="flex:1;" onclick="requestWithdraw()">Request</button>
+            <button class="secondary" style="flex:1;" onclick="closeWithdrawModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="avatarModal" class="modal hidden">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeAvatarModal()">✕</button>
+        <div class="modal-header"><h3>Choose Avatar</h3></div>
+        <div class="avatar-grid">
+            <div class="avatar-option" onclick="selectAvatar('fas fa-user-secret')"><i class="fas fa-user-secret"></i></div>
+            <div class="avatar-option" onclick="selectAvatar('fas fa-user-robot')"><i class="fas fa-user-robot"></i></div>
+            <div class="avatar-option" onclick="selectAvatar('fas fa-mask')"><i class="fas fa-mask"></i></div>
+            <div class="avatar-option" onclick="selectAvatar('fas fa-ghost')"><i class="fas fa-ghost"></i></div>
+            <div class="avatar-option" onclick="selectAvatar('fas fa-user-spy')"><i class="fas fa-user-spy"></i></div>
+            <div class="avatar-option" onclick="selectAvatar('fas fa-crown')"><i class="fas fa-crown"></i></div>
+        </div>
+    </div>
+</div>
+
+<div id="premiumModal" class="modal hidden">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closePremiumModal()">✕</button>
+        <div class="modal-header"><h3>Upgrade to Premium</h3></div>
+        <div style="font-size:36px;font-weight:800;color:#ffd700;margin:24px 0;text-align:center;">$220</div>
+        <p style="color:#94a3b8;text-align:center;margin-bottom:24px;">Get access to exclusive features and private chat</p>
+        <div style="display:flex;gap:12px">
+            <button class="btn-deposit" style="flex:1;" onclick="buyPremium()">Buy Now</button>
+            <button class="secondary" style="flex:1;" onclick="closePremiumModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="confirmPurchaseModal" class="modal hidden">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeConfirmModal()">✕</button>
+        <div class="modal-header"><h3>Confirm Purchase</h3></div>
+        <p id="confirmCardDetails" style="margin:24px 0;text-align:center;font-size:20px;font-weight:700;"></p>
+        <div style="display:flex;gap:12px">
+            <button class="btn-deposit" style="flex:1;" onclick="executePurchase()">Confirm</button>
+            <button class="secondary" style="flex:1;" onclick="closeConfirmModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="viewCardModal" class="modal hidden">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeViewCardModal()">✕</button>
+        <div class="modal-header"><h3>Card Details</h3></div>
+        <div id="viewCardDetails" style="white-space:pre-wrap;background:rgba(0,0,0,0.5);padding:20px;border-radius:16px;margin:16px 0;font-family:monospace;"></div>
+        <button onclick="copyCardDetails()" class="btn-deposit" style="width:100%">Copy All Details</button>
+    </div>
+</div>
+
+<script>
+    // ==================== GLOBAL STATE ====================
+    let USD_TO_BTC = 50000, USD_TO_ETH = 3000, USD_TO_USDT = 1;
+    let displayCurrency = 'USD';
+    let currentUser = null;
+    let currentRegion = 'all', currentType = 'all', regions = [];
+    let chatInterval = null, premiumChatInterval = null, walletInterval = null;
+    let wallets = {}, selectedMethod = 'BTC', selectedWithdrawCurrency = 'BTC';
+    let lastDepositRequestId = null, isPremium = false, selectedDepositAmount = null, pendingPurchase = null, currentViewCard = null;
+    const STORAGE_KEY = 'crystal_active_tab';
+    let refCode = null;
+    let authMode = 'login';
+    let preloaderDismissed = false;
+    const DEFAULT_FETCH_TIMEOUT_MS = 12000;
+
+    // Telegram WebApp fallback
+    if (!window.Telegram || !window.Telegram.WebApp) {
+        window.Telegram = { WebApp: { ready: () => {}, expand: () => {}, initDataUnsafe: { start_param: '' } } };
+    }
+
+    // ========== FIX FOR KEYBOARD COVERING INPUT ==========
+    function adjustScrollForInput() {
+        const activeElement = document.activeElement;
+        if (!activeElement || (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA')) return;
+        setTimeout(() => {
+            const header = document.querySelector('.app-header');
+            const headerHeight = header ? header.offsetHeight : 0;
+            const rect = activeElement.getBoundingClientRect();
+            const absoluteY = window.scrollY + rect.top;
+            const targetScrollY = absoluteY - headerHeight - 30;
+            if (targetScrollY >= 0) {
+                window.scrollTo({ top: targetScrollY, behavior: 'smooth' });
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }, 350);
+    }
+
+    document.addEventListener('focusin', function(e) {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+            adjustScrollForInput();
+        }
+    });
+    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.expand === 'function') {
+        window.Telegram.WebApp.expand();
+        document.addEventListener('focusin', function() {
+            window.Telegram.WebApp.expand();
+        });
+    }
+
+// ========== AUTH & API FUNCTIONS ==========
+async function authFetch(url, o = {}) {
+    const timeoutMs = Number.isFinite(o.timeoutMs) ? o.timeoutMs : DEFAULT_FETCH_TIMEOUT_MS;
+    const hasExternalSignal = !!o.signal;
+    const controller = hasExternalSignal ? null : new AbortController();
+    const fetchOptions = { ...o, credentials: 'include', signal: o.signal || controller?.signal };
+    delete fetchOptions.timeoutMs;
+    let timeoutId = null;
+    if (!hasExternalSignal && timeoutMs > 0) {
+        timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    }
+    try {
+        return await fetch(url, fetchOptions);
+    } catch (e) {
+        if (e?.name === 'AbortError') throw new Error('Request timeout');
+        throw e;
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+    }
+}
+function normalizeErrorMessage(input, fallback = 'Request failed') {
+    const raw = String(input || '').trim();
+    if (!raw) return fallback;
+    const cleaned = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!cleaned) return fallback;
+    if (/(not[_\s-]?found|page\s+could\s+not\s+be\s+found|страница\s+не\s+найдена|<title>\s*404|\berror\b\s*404)/i.test(cleaned)) {
+        return fallback;
+    }
+    return cleaned.slice(0, 240);
+}
+async function authFetchJson(url, options = {}) {
+    const response = await authFetch(url, options);
+    const rawText = await response.text();
+    let data = {};
+    if (rawText) try { data = JSON.parse(rawText); } catch(e) { throw new Error(normalizeErrorMessage(rawText, `HTTP ${response.status}`)); }
+    if (!response.ok) return { ...data, success: false, msg: normalizeErrorMessage(data?.msg || rawText, `HTTP ${response.status}`), status: response.status };
+    return data || {};
+}
+function setButtonLoading(btn, loadingText) {
+    if (!btn) return () => {};
+    const original = btn.dataset.originalText || btn.innerHTML;
+    btn.dataset.originalText = original;
+    btn.disabled = true;
+    btn.innerHTML = loadingText;
+    return () => { btn.disabled = false; btn.innerHTML = btn.dataset.originalText || original; };
+}
+function hidePreloader(delayMs = 300) {
+    if (preloaderDismissed) return;
+    preloaderDismissed = true;
+    const preloader = document.getElementById('preloader');
+    if (!preloader) return;
+    const fadeOut = () => {
+        preloader.style.opacity = '0';
+        setTimeout(() => { preloader.style.display = 'none'; }, 500);
+    };
+    if (delayMs > 0) setTimeout(fadeOut, delayMs);
+    else fadeOut();
+}
+async function loadRates() {
+    try { const d = await authFetchJson('/api/rates'); USD_TO_BTC = d.BTC; USD_TO_ETH = d.ETH; } catch (e) { console.error('Rates error', e); }
+}
+function formatBalance(usd) {
+    switch(displayCurrency){
+        case 'USD': return `$${usd.toFixed(2)}`;
+        case 'BTC': return `₿${(usd/USD_TO_BTC).toFixed(8)}`;
+        case 'ETH': return `Ξ${(usd/USD_TO_ETH).toFixed(6)}`;
+        case 'USDT': return `₮${(usd/USD_TO_USDT).toFixed(2)}`;
+        default: return `$${usd.toFixed(2)}`;
+    }
+}
+function getCurrencyIcon() { return displayCurrency==='BTC'?'fab fa-bitcoin':displayCurrency==='ETH'?'fab fa-ethereum':'fas fa-dollar-sign'; }
+function cycleCurrency() { const arr=['USD','BTC','ETH','USDT']; let i=arr.indexOf(displayCurrency); displayCurrency=arr[(i+1)%arr.length]; updateDisplay(); }
+function toggleCurrencySelector() {
+    let sel = document.getElementById('currencySelector');
+    if(sel) { sel.remove(); return; }
+    sel = document.createElement('div'); sel.id='currencySelector'; sel.className='currency-dropdown';
+    sel.innerHTML = `<div class="currency-option" onclick="setCurrency('USD')"><i class="fas fa-dollar-sign"></i> USD</div><div class="currency-option" onclick="setCurrency('BTC')"><i class="fab fa-bitcoin"></i> BTC</div><div class="currency-option" onclick="setCurrency('ETH')"><i class="fab fa-ethereum"></i> ETH</div><div class="currency-option" onclick="setCurrency('USDT')"><i class="fas fa-dollar-sign"></i> USDT</div>`;
+    document.querySelector('.app-header .right').appendChild(sel);
+}
+function setCurrency(c){ displayCurrency=c; updateDisplay(); document.getElementById('currencySelector')?.remove(); }
+
+function showLogin() {
+    document.getElementById('authView').classList.remove('hidden');
+    document.getElementById('appContent').classList.add('hidden');
+    document.getElementById('bottomNav').classList.add('hidden');
+    switchAuthMode('login');
+}
+function clearAuthError() { document.getElementById('authError').innerText = ''; }
+function switchAuthMode(mode) {
+    authMode = mode;
+    document.getElementById('loginToggle').classList.toggle('active', mode==='login');
+    document.getElementById('registerToggle').classList.toggle('active', mode==='register');
+    document.getElementById('loginStep').classList.toggle('hidden', mode!=='login');
+    document.getElementById('registerStep').classList.toggle('hidden', mode!=='register');
+    document.getElementById('forgotStep').classList.add('hidden');
+    clearAuthError();
+    if (mode === 'register') {
+        const emailInput = document.getElementById('regEmail');
+        const emailBlock = document.getElementById('emailVerificationBlock');
+        const sendBtn = document.getElementById('sendEmailCodeBtn');
+        const codeInput = document.getElementById('regEmailCode');
+        emailBlock.style.display = 'block';
+        sendBtn.style.display = 'inline-block';
+        codeInput.style.display = 'none';
+        emailInput.oninput = () => {
+            if (emailInput.value.trim()) sendBtn.style.display = 'inline-block';
+            else { sendBtn.style.display = 'none'; codeInput.style.display = 'none'; }
+        };
+    } else document.getElementById('emailVerificationBlock').style.display = 'none';
+}
+function showForgot() {
+    document.getElementById('loginStep').classList.add('hidden');
+    document.getElementById('registerStep').classList.add('hidden');
+    document.getElementById('forgotStep').classList.remove('hidden');
+    document.getElementById('forgotEmail').value = document.getElementById('loginUsername').value.trim();
+    document.getElementById('forgotUsername').value = document.getElementById('loginUsername').value.trim();
+    clearAuthError();
+}
+function applyAuthSuccess(user, useSavedTab = true) {
+    currentUser = user;
+    isPremium = currentUser.is_premium;
+    document.getElementById('authView').classList.add('hidden');
+    document.getElementById('appContent').classList.remove('hidden');
+    document.getElementById('bottomNav').classList.remove('hidden');
+    afterLogin();
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (useSavedTab && saved && ['shop','orders','profile','chat','support'].includes(saved)) switchTab(saved, true);
+    else switchTab('shop', true);
+}
+
+async function registerUser(ev) {
+    const stopLoading = setButtonLoading(ev?.currentTarget, 'Creating...');
+    try {
+        const username = document.getElementById('regUsername').value.trim();
+        const email = document.getElementById('regEmail').value.trim().toLowerCase();
+        const password = document.getElementById('regPassword').value.trim();
+        const verificationCode = document.getElementById('regEmailCode').value.trim();
+        if (username.length < 3) { document.getElementById('authError').innerText = 'Username too short'; return; }
+        if (password.length < 6) { document.getElementById('authError').innerText = 'Password too short'; return; }
+
+        const payload = { username, email, password, ref: refCode };
+        if (email && verificationCode) payload.verificationCode = verificationCode;
+
+        const d = await authFetchJson('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        if (d.success) { clearAuthError(); applyAuthSuccess(d.user, false); return; }
+        document.getElementById('authError').innerText = d.msg || 'Registration failed';
+    } catch (e) {
+        document.getElementById('authError').innerText = normalizeErrorMessage(e.message, 'Network error');
+    } finally {
+        stopLoading();
+    }
+}
+async function login(ev) {
+    const stopLoading = setButtonLoading(ev?.currentTarget, 'Logging in...');
+    try {
+        const loginValue = document.getElementById('loginUsername').value.trim();
+        const password = document.getElementById('loginPassword').value.trim();
+        const d = await authFetchJson('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ login: loginValue, password }) });
+        if (d.success) { clearAuthError(); applyAuthSuccess(d.user, true); return; }
+        document.getElementById('authError').innerText = d.msg || 'Login failed';
+    } catch (e) { document.getElementById('authError').innerText = normalizeErrorMessage(e.message, 'Network error'); }
+    finally { stopLoading(); }
+}
+async function sendForgot(ev) {
+    const stopLoading = setButtonLoading(ev?.currentTarget, 'Sending...');
+    try {
+        const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
+        const username = document.getElementById('forgotUsername').value.trim();
+        if (!email && !username) { document.getElementById('authError').innerText = 'Enter email or username'; return; }
+        const d = await authFetchJson('/api/auth/forgot', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ email, username }) });
+        if (d.success) { alert('Reset link sent to your email.'); switchAuthMode('login'); return; }
+        document.getElementById('authError').innerText = d.msg || 'Unable to send reset link';
+    } catch (e) { document.getElementById('authError').innerText = normalizeErrorMessage(e.message, 'Network error'); }
+    finally { stopLoading(); }
+}
+async function sendEmailCode() {
+    const email = document.getElementById('regEmail').value.trim().toLowerCase();
+    if (!email) { alert('Please enter email first'); return; }
+    const btn = document.getElementById('sendEmailCodeBtn');
+    const originalText = btn.innerText;
+    btn.innerText = 'Sending...';
+    btn.disabled = true;
+    try {
+        const resp = await fetch('/api/auth/send-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        const data = await resp.json();
+        if (data.success) {
+            alert('Verification code sent to your email!');
+            document.getElementById('emailCodeStatus').innerHTML = '<div style="color:#10b981;padding:5px;">✅ Code sent</div>';
+            document.getElementById('regEmailCode').style.display = 'block';
+        } else alert(data.msg || 'Failed to send code');
+    } catch(e) { alert('Network error'); }
+    finally { btn.innerText = originalText; btn.disabled = false; }
+}
+async function init() {
+    try {
+        await loadRates();
+        const params = new URLSearchParams(window.location.search);
+        refCode = params.get('start') || '';
+        const webApp = window.Telegram?.WebApp;
+        if (webApp) {
+            if (typeof webApp.ready === 'function') webApp.ready();
+            const idata = webApp.initDataUnsafe || {};
+            if (idata.start_param) refCode = idata.start_param;
+        }
+        if (refCode && refCode.startsWith('ref_')) {
+            try { await authFetchJson('/api/ref/set', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ ref: refCode }) }); } catch(e) {}
+        }
+        const me = await authFetchJson('/api/auth/me');
+        if (me.loggedIn) applyAuthSuccess({ email: me.email, username: me.username, balance_usd: me.balance_usd, is_worker: me.is_worker, is_premium: me.is_premium }, true);
+        else showLogin();
+        await loadRegions();
+        await loadWallets();
+        startPremiumChat();
+        walletInterval = setInterval(loadWallets, 30000);
+        loadCards();
+        updatePremiumAccess();
+    } catch (e) {
+        console.error('Init error', e);
+        showLogin();
+        const authError = document.getElementById('authError');
+        if (authError) authError.innerText = 'Cannot connect to server. Please try again.';
+    } finally {
+        hidePreloader(1000);
+    }
+}
+function afterLogin() {
+    document.getElementById('profileUsername').innerText = currentUser.username||currentUser.email;
+    updateDisplay();
+    document.getElementById('premiumStatusText').innerText = isPremium?'Premium Member':'Standard Member';
+    document.getElementById('premiumUpgradeBlock').style.display = isPremium?'none':'flex';
+    loadMyCards(); updateOrdersView(); updateHeader('shop');
+    let savedAvatar = localStorage.getItem('avatar')||'fas fa-user-secret';
+    document.getElementById('avatarDisplay').innerHTML = `<i class="${savedAvatar}"></i>`;
+}
+function updateDisplay() {
+    if(currentUser){
+        document.getElementById('balanceDisplay').innerText = formatBalance(currentUser.balance_usd);
+        document.getElementById('balanceIcon').className = getCurrencyIcon();
+        updateHeader(document.querySelector('.nav-item.active')?.dataset?.tab || 'shop');
+    }
+}
+function updateHeader(activeTab) {
+    const h = document.getElementById('headerRight');
+    if(!h) return;
+    if(activeTab === 'profile'){
+        const now=new Date();
+        h.innerHTML = `<i class="far fa-calendar-alt"></i> ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+    } else {
+        if(currentUser) h.innerHTML = `<span style="cursor:pointer" onclick="toggleCurrencySelector()">${formatBalance(currentUser.balance_usd)} <i class="fas fa-chevron-down" style="font-size:12px; margin-left:4px;"></i></span>`;
+        else h.innerHTML = '';
+    }
+}
+function updateOrdersView() {
+    const o = document.getElementById('ordersContent');
+    if(!o) return;
+    if(isPremium) o.innerHTML = '<div class="orders-input"><input type="text" id="orderCardNumber" placeholder="Card number"><input type="text" id="orderCardExp" placeholder="MM/YY" maxlength="5"><input type="text" id="orderCardCVV" placeholder="CVV" maxlength="3"><button onclick="generateOrderBalance()">Check Balance</button></div><div id="orderBalanceResult" class="balance-result">Enter card details to check</div>';
+    else o.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">This exclusive feature is available for <strong style="color:#ffd700;">PREMIUM</strong> users only.</p><button class="btn-deposit" onclick="openPremiumModal()" style="width:100%">Upgrade to Premium</button>';
+}
+async function generateOrderBalance() {
+    const card = document.getElementById('orderCardNumber').value;
+    let exp = document.getElementById('orderCardExp').value;
+    const cvv = document.getElementById('orderCardCVV').value;
+    if(!card||!exp||!cvv) return alert('Please fill all card details');
+    exp = exp.replace(/[^0-9]/g,'');
+    if(exp.length>=2) exp = exp.slice(0,2)+'/'+exp.slice(2,4);
+    try {
+        const d = await authFetchJson('/api/orders/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cardNumber:card,exp:exp,cvv:cvv})});
+        if(d.success) document.getElementById('orderBalanceResult').innerText = `Live Balance: $${d.balance}`;
+        else alert(d.msg);
+    } catch(e){alert(normalizeErrorMessage(e.message,'Network error'));}
+}
+document.addEventListener('input',function(e){
+    if(e.target&&e.target.id==='orderCardExp'){
+        let v=e.target.value.replace(/[^0-9]/g,'');
+        if(v.length>2) v=v.slice(0,2)+'/'+v.slice(2,4);
+        e.target.value=v;
+    }
+    if(e.target&&e.target.id==='orderCardNumber'){
+        let v=e.target.value.replace(/\s/g,'');
+        if(v.length>16) v=v.slice(0,16);
+        let parts = v.match(/.{1,4}/g);
+        if(parts) e.target.value=parts.join(' ');
+        else e.target.value=v;
+    }
+});
+let currentAvatar = localStorage.getItem('avatar')||'fas fa-user-secret';
+function openAvatarModal(){document.getElementById('avatarModal').classList.remove('hidden');}
+function closeAvatarModal(){document.getElementById('avatarModal').classList.add('hidden');}
+function selectAvatar(i){ currentAvatar=i; document.getElementById('avatarDisplay').innerHTML=`<i class="${i}"></i>`; localStorage.setItem('avatar',i); closeAvatarModal(); }
+function openPremiumModal(){if(isPremium){alert('You are already a Premium member!'); return;} document.getElementById('premiumModal').classList.remove('hidden');}
+function closePremiumModal(){document.getElementById('premiumModal').classList.add('hidden');}
+async function buyPremium(){
+    if(!currentUser){alert('Please login first'); closePremiumModal(); return;}
+    if(currentUser.balance_usd<220){alert('Insufficient balance. Please deposit funds.'); closePremiumModal(); openDepositModal(); return;}
+    const buyBtn = document.querySelector('#premiumModal .btn-deposit');
+    const stopLoading = setButtonLoading(buyBtn,'Processing...');
+    try {
+        const d = await authFetchJson('/api/user/buy-premium',{method:'POST'});
+        if(d.success){
+            currentUser.balance_usd = d.newBalance;
+            isPremium = true;
+            document.getElementById('premiumStatusText').innerText = 'Premium Member';
+            document.getElementById('premiumUpgradeBlock').style.display = 'none';
+            updateDisplay(); updatePremiumAccess(); updateOrdersView(); updatePremiumChatUI();
+            alert('Success! You are now a Premium Member!');
+        } else alert('Error: '+d.msg);
+    } catch(e){alert(normalizeErrorMessage(e.message,'Network error'));}
+    finally{stopLoading();}
+    closePremiumModal();
+}
+function updatePremiumAccess(){ 
+    const container = document.getElementById('premiumChatContainer');
+    const lock = document.getElementById('premiumChatLock');
+    const inputArea = document.getElementById('premiumChatInputArea');
+    if(container) {
+        if(isPremium) { container.classList.add('premium-active'); lock.style.display = 'none'; inputArea.classList.remove('hidden'); }
+        else { container.classList.remove('premium-active'); lock.style.display = 'flex'; inputArea.classList.add('hidden'); }
+    }
+}
+function updatePremiumChatUI(){ updatePremiumAccess(); }
+function openDepositModal(){document.getElementById('depositModal').classList.remove('hidden'); selectedDepositAmount=null; document.querySelectorAll('.amount-btn').forEach(b=>b.classList.remove('selected')); document.getElementById('cryptoAmount').innerText='';}
+function closeDepositModal(){document.getElementById('depositModal').classList.add('hidden');}
+function selectDepositAmount(a){
+    document.querySelectorAll('.amount-btn').forEach(b=>b.classList.remove('selected'));
+    selectedDepositAmount = a;
+    const btn = [...document.querySelectorAll('.amount-btn')].find(b=>parseFloat(b.innerText)===parseFloat(a));
+    if(btn) btn.classList.add('selected');
+    updateCryptoAmount(a);
+}
+function setCustomDeposit(){ const v = parseFloat(document.getElementById('customDepositAmount').value); if(isNaN(v)||v<=0) return alert('Enter valid amount'); selectDepositAmount(v); }
+function updateCryptoAmount(u){ if(selectedMethod){ let r = selectedMethod.includes('ETH')?USD_TO_ETH:selectedMethod.includes('USDT')?USD_TO_USDT:USD_TO_BTC; document.getElementById('cryptoAmount').innerText = `≈ ${(u/r).toFixed(8)} ${selectedMethod.split('_')[0]}`; } }
+async function loadWallets(){
+    try { const d = await authFetchJson('/api/wallets'); wallets={}; d.forEach(w=>wallets[w.currency]=w.address); renderMethodGrid(); renderWithdrawMethodGrid(); } catch(e){}
+}
+function renderMethodGrid(){
+    const m = [{id:'BTC',icon:'fab fa-bitcoin',name:'BTC'},{id:'ETH',icon:'fab fa-ethereum',name:'ETH'},{id:'USDT_TRC20',icon:'fas fa-dollar-sign',name:'USDT',net:'TRC20'},{id:'USDT_BEP20',icon:'fas fa-dollar-sign',name:'USDT',net:'BEP20'}];
+    let h = ''; m.forEach(mm=>{ h += `<div class="method-btn ${selectedMethod===mm.id?'active':''}" onclick="selectMethod('${mm.id}')"><i class="${mm.icon}"></i><span>${mm.name}</span>${mm.net?`<span style="font-size:11px;color:#94a3b8;">${mm.net}</span>`:''}</div>`; });
+    document.getElementById('methodGrid').innerHTML = h; updateWalletAddress();
+}
+function renderWithdrawMethodGrid(){
+    const m = [{id:'BTC',icon:'fab fa-bitcoin',name:'BTC'},{id:'ETH',icon:'fab fa-ethereum',name:'ETH'},{id:'USDT_TRC20',icon:'fas fa-dollar-sign',name:'USDT',net:'TRC20'},{id:'USDT_BEP20',icon:'fas fa-dollar-sign',name:'USDT',net:'BEP20'}];
+    let h = ''; m.forEach(mm=>{ h += `<div class="method-btn ${selectedWithdrawCurrency===mm.id?'active':''}" onclick="selectWithdrawCurrency('${mm.id}')"><i class="${mm.icon}"></i><span>${mm.name}</span>${mm.net?`<span style="font-size:11px;color:#94a3b8;">${mm.net}</span>`:''}</div>`; });
+    document.getElementById('withdrawMethodGrid').innerHTML = h;
+}
+function selectMethod(m){ selectedMethod=m; renderMethodGrid(); if(selectedDepositAmount) updateCryptoAmount(selectedDepositAmount); }
+function selectWithdrawCurrency(m){ selectedWithdrawCurrency=m; renderWithdrawMethodGrid(); updateWithdrawCrypto(); }
+function updateWalletAddress(){ document.getElementById('walletAddressText').innerText = wallets[selectedMethod] || 'Address not currently set'; }
+function copyAddress(){
+    const a = document.getElementById('walletAddressText').innerText;
+    if(a && !a.includes('not set')) navigator.clipboard.writeText(a).then(()=>alert('Wallet address copied!')).catch(()=>{ const t = document.createElement('textarea'); t.value=a; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); alert('Copied!'); });
+}
+function updateWithdrawCrypto(){
+    const a = parseFloat(document.getElementById('withdrawAmount').value);
+    if(!isNaN(a)&&a>0){ let r = selectedWithdrawCurrency.includes('ETH')?USD_TO_ETH:selectedWithdrawCurrency.includes('USDT')?USD_TO_USDT:USD_TO_BTC; document.getElementById('withdrawCryptoAmount').innerText = `≈ ${(a/r).toFixed(8)} ${selectedWithdrawCurrency.split('_')[0]}`; }
+    else document.getElementById('withdrawCryptoAmount').innerText = '';
+}
+document.getElementById('withdrawAmount')?.addEventListener('input', updateWithdrawCrypto);
+async function requestDeposit(){
+    if(!selectedDepositAmount) return alert('Please select a deposit amount first.');
+    const btn = document.querySelector('#depositModal .check-payment-btn');
+    const stopLoading = setButtonLoading(btn,'Submitting...');
+    try {
+        const d = await authFetchJson('/api/deposit/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:selectedDepositAmount,currency:selectedMethod})});
+        if(d.success){ lastDepositRequestId=d.requestId; document.getElementById('walletAddressText').innerText=d.walletAddress; alert('Request sent! Please transfer the funds.'); closeDepositModal(); checkDepositStatus(); }
+        else alert('Error: '+d.msg);
+    } catch(e){ alert(normalizeErrorMessage(e.message,'Network error')); } finally{ stopLoading(); }
+}
+function checkDepositStatus(){
+    if(!lastDepositRequestId) return;
+    const i = setInterval(async()=>{
+        try {
+            const d = await authFetchJson('/api/deposit/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:lastDepositRequestId})});
+            if(d.status==='approved'){ alert('Deposit approved!'); clearInterval(i); const m = await authFetchJson('/api/auth/me'); if(m.loggedIn){ currentUser.balance_usd=m.balance_usd; updateDisplay(); } }
+            else if(d.status==='rejected'){ alert('Deposit rejected.'); clearInterval(i); }
+        } catch(e){}
+    },4000);
+}
+function openWithdrawModal(){document.getElementById('withdrawModal').classList.remove('hidden');}
+function closeWithdrawModal(){document.getElementById('withdrawModal').classList.add('hidden');}
+async function requestWithdraw(){
+    const amount = parseFloat(document.getElementById('withdrawAmount').value);
+    const addr = document.getElementById('withdrawAddress').value.trim();
+    const password = document.getElementById('withdrawPassword').value.trim();
+    if(!amount||amount<=0) return alert('Enter valid amount');
+    if(!addr) return alert('Enter destination address');
+    if(!password) return alert('Confirm your password');
+    const btn = document.querySelector('#withdrawModal .btn-withdraw');
+    const stopLoading = setButtonLoading(btn,'Submitting...');
+    try {
+        const d = await authFetchJson('/api/withdraw/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount,wallet_address:addr,wallet_currency:selectedWithdrawCurrency,password})});
+        if(d.success){ alert('Withdraw request submitted.'); closeWithdrawModal(); }
+        else { alert('Error: '+d.msg); if(d.redirectToDeposit){ closeWithdrawModal(); openDepositModal(); } }
+    } catch(e){ alert(normalizeErrorMessage(e.message,'Network error')); } finally{ stopLoading(); }
+}
+
+async function loadMyCards(){
+        try {
+            const cards = await authFetchJson('/api/my-cards');
+            const c = document.getElementById('myCardsContainer');
+            if(!cards||cards.length===0){ c.innerHTML = '<div class="empty-cards"><i class="fas fa-credit-card" style="font-size:32px; margin-bottom:12px; opacity:0.5;"></i><br>You haven\'t purchased any cards yet</div>'; return; }
+            let h = '';
+            cards.forEach(cd=>{
+                h += `<div class="card-item"><div class="card-info" onclick="copyCardInfo('${cd.card_number}','${cd.exp}','${cd.holder_name}','${cd.region}','${cd.cvv}','${cd.bank}')"><div class="card-row"><span>**** **** **** ${cd.card_number.slice(-4)}</span><span>${cd.exp}</span></div><div class="card-details"><span>${cd.holder_name}</span><span>${cd.region}</span><span style="color:#2c64e3;">${cd.type}</span></div></div><i class="fas fa-eye eye-icon" onclick="viewCardDetails('${cd.card_number}','${cd.exp}','${cd.holder_name}','${cd.region}','${cd.cvv}','${cd.bank}')"></i></div>`;
+            });
+            c.innerHTML = h;
+        } catch(e){ document.getElementById('myCardsContainer').innerHTML = '<div class="empty-cards">Failed to load cards</div>'; }
+    }
+    function copyCardInfo(n,e,h,r,cv,b){ const info = `Card: ${n}\nExp: ${e}\nHolder: ${h}\nRegion: ${r}\nCVV: ${cv}\nBank: ${b}`; navigator.clipboard.writeText(info).then(()=>alert('Card details copied!')).catch(()=>{ const t=document.createElement('textarea'); t.value=info; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); alert('Copied!'); }); }
+    function viewCardDetails(n,e,h,r,cv,b){ currentViewCard={n,e,h,r,cv,b}; const d=`Number: ${n}\nExp:    ${e}\nHolder: ${h}\nCVV:    ${cv}\nRegion: ${r}\nBank:   ${b}`; document.getElementById('viewCardDetails').innerText=d; document.getElementById('viewCardModal').classList.remove('hidden'); }
+    function closeViewCardModal(){document.getElementById('viewCardModal').classList.add('hidden');}
+    function copyCardDetails(){ if(currentViewCard) copyCardInfo(currentViewCard.n,currentViewCard.e,currentViewCard.h,currentViewCard.r,currentViewCard.cv,currentViewCard.b); }
+    function promptBuyCard(id,p){
+        if(!currentUser) return alert('Please login to purchase');
+        if(currentUser.balance_usd < p) return alert('Insufficient balance. Please make a deposit.');
+        pendingPurchase = { cardId:id, price:p };
+        document.getElementById('confirmCardDetails').innerText = `Total: $${p}`;
+        document.getElementById('confirmPurchaseModal').classList.remove('hidden');
+    }
+    function closeConfirmModal(){document.getElementById('confirmPurchaseModal').classList.add('hidden'); pendingPurchase=null;}
+    async function executePurchase(){
+        if(!pendingPurchase) return;
+        const { cardId } = pendingPurchase;
+        const btn = document.querySelector('#confirmPurchaseModal .btn-deposit');
+        const stopLoading = setButtonLoading(btn,'Processing...');
+        closeConfirmModal();
+        try {
+            const d = await authFetchJson('/api/cart/buy-now',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cardId})});
+            if(d.success){ alert('Purchase successful!'); currentUser.balance_usd = d.newBalance; updateDisplay(); if(!document.getElementById('profileView').classList.contains('hidden')) loadMyCards(); }
+            else { alert('Error: '+d.msg); if(d.redirectToDeposit){ switchTab('profile'); openDepositModal(); } }
+        } catch(e){ alert(normalizeErrorMessage(e.message,'Network error')); } finally{ stopLoading(); }
+    }
+    async function loadPremiumMessages(){
+        if(!isPremium) return;
+        try {
+            const msgs = await authFetchJson('/api/premium/messages');
+            const container = document.getElementById('premiumChatMessages');
+            if(!container) return;
+            const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 10;
+            container.innerHTML = '';
+            msgs.forEach(m=>{
+                const row = document.createElement('div'); row.className = 'chat-message';
+                const name = document.createElement('span'); name.className = 'name'; name.textContent = `${m.username}: `;
+                const text = document.createTextNode(m.message || '');
+                const time = document.createElement('span'); time.className = 'time'; time.textContent = ` ${new Date(m.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
+                row.appendChild(name); row.appendChild(text); row.appendChild(time);
+                container.appendChild(row);
+            });
+            if(wasAtBottom) container.scrollTop = container.scrollHeight;
+        } catch(e){ console.error('Premium chat error', e); }
+    }
+    async function sendPremiumMessage(){
+        const input = document.getElementById('premiumMsgInput');
+        const msg = input.value.trim();
+        if(!msg) return;
+        try {
+            const d = await authFetchJson('/api/premium/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+            if(d.success){ input.value=''; await loadPremiumMessages(); const c = document.getElementById('premiumChatMessages'); c.scrollTop = c.scrollHeight; }
+            else alert('Error: '+(d.msg||'Unknown error'));
+        } catch(e){ alert(normalizeErrorMessage(e.message,'Network error')); }
+    }
+    function startPremiumChat(){
+        if(premiumChatInterval) clearInterval(premiumChatInterval);
+        loadPremiumMessages();
+        premiumChatInterval = setInterval(loadPremiumMessages,2000);
+    }
+    async function sendMessage(){
+        const m = document.getElementById('msgInput').value;
+        if(!m) return;
+        try {
+            const d = await authFetchJson('/api/support/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m})});
+            if(d.success){ document.getElementById('msgInput').value=''; await loadChat(); }
+            else alert('Error sending message');
+        } catch(e){ alert(normalizeErrorMessage(e.message,'Network error')); }
+    }
+    async function uploadFile(){
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        if(!file) return;
+        const formData = new FormData();
+        formData.append('file',file);
+        try {
+            const data = await authFetchJson('/api/support/upload',{method:'POST',body:formData});
+            if(data.success){ fileInput.value=''; await loadChat(); }
+            else alert('Upload error: '+data.msg);
+        } catch(e){ alert(normalizeErrorMessage(e.message,'Network error')); }
+    }
+    async function loadChat(){
+        try {
+            const msgs = await authFetchJson('/api/support/history');
+            const box = document.getElementById('chatBox');
+            const wasAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 10;
+            box.innerHTML = '';
+            if(!msgs.length){ box.innerHTML = '<div class="empty-chat">How can we help you today?</div>'; return; }
+            msgs.forEach(m=>{
+                const w = document.createElement('div'); w.className = `message-wrapper ${m.role}`;
+                const b = document.createElement('div'); b.className = `message-bubble ${m.role}`;
+                if(m.file_id){
+                    if(m.file_type.startsWith('image/')){
+                        const img = document.createElement('img'); img.src = m.file_id; img.style.maxWidth = '100%'; img.style.borderRadius = '8px';
+                        b.appendChild(img);
+                    } else if(m.file_type.startsWith('video/')){
+                        const video = document.createElement('video'); video.src = m.file_id; video.controls = true; video.style.maxWidth = '100%';
+                        b.appendChild(video);
+                    } else {
+                        const link = document.createElement('a'); link.href = m.file_id; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.style.color = '#fff'; link.style.textDecoration = 'underline'; link.textContent = '📎 Download Attachment';
+                        b.appendChild(link);
+                    }
+                } else {
+                    b.appendChild(document.createTextNode(m.text || ''));
+                }
+                const meta = document.createElement('div'); meta.className = 'message-time'; meta.textContent = new Date(m.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+                b.appendChild(meta); w.appendChild(b); box.appendChild(w);
+            });
+            if(wasAtBottom) box.scrollTop = box.scrollHeight;
+        } catch(e){}
+    }
+    async function loadRegions(){
+        try {
+            regions = await authFetchJson('/api/regions');
+            const s = document.getElementById('regionFilter');
+            s.innerHTML = '<option value="all">All Regions</option>';
+            regions.forEach(rr => s.innerHTML += `<option value="${rr}">${rr}</option>`);
+        } catch(e){}
+    }
+    async function loadCards(){
+        try {
+            const c = await authFetchJson(`/api/cards?region=${currentRegion}&type=${currentType}`);
+            let h = '';
+            c.forEach(cd=>{
+                let badgeClass = 'badge';
+                if(cd.type === 'Standard') badgeClass += ' standard';
+                else if(cd.type === 'Gold') badgeClass += ' gold';
+                else if(cd.type === 'Platinum') badgeClass += ' platinum';
+                else if(cd.type === 'Business') badgeClass += ' business';
+                h += `<tr><td style="font-family:monospace;">****${cd.card_number.slice(-4)}</td><td>${cd.exp}</td><td>${cd.holder_name}</td><td>${cd.region}</td><td><span class="${badgeClass}">${cd.type}</span></td><td style="color:#10b981;">$${cd.price_usd}</td><td><button class="btn-deposit" style="padding:6px 16px; margin:0;" onclick="promptBuyCard(${cd.id}, ${cd.price_usd})">Buy</button></td></tr>`;
+            });
+            document.getElementById('cardsList').innerHTML = h || '<tr><td colspan="7" style="text-align:center;padding:30px;">No cards available</td></tr>';
+        } catch(e){}
+    }
+    function applyFilters(){ currentRegion = document.getElementById('regionFilter').value; currentType = document.getElementById('typeFilter').value; loadCards(); }
+    function clearIntervals(){
+        if(chatInterval) { clearInterval(chatInterval); chatInterval = null; }
+        if(premiumChatInterval) { clearInterval(premiumChatInterval); premiumChatInterval = null; }
+        if(walletInterval) { clearInterval(walletInterval); walletInterval = null; }
+    }
+    function switchTab(t, noPush){
+        clearIntervals();
+        document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active', el.dataset.tab===t));
+        ['shopView','ordersView','profileView','chatView','supportView'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+        if(t==='support'){ document.getElementById('supportView').classList.remove('hidden'); loadChat(); chatInterval = setInterval(loadChat,1500); }
+        else if(t==='profile'){ document.getElementById('profileView').classList.remove('hidden'); loadMyCards(); loadWallets(); updateHeader(t); }
+        else if(t==='shop'){ document.getElementById('shopView').classList.remove('hidden'); loadCards(); updateHeader(t); }
+        else if(t==='orders'){ document.getElementById('ordersView').classList.remove('hidden'); updateOrdersView(); updateHeader(t); }
+        else if(t==='chat'){ document.getElementById('chatView').classList.remove('hidden'); updateHeader(t); startPremiumChat(); }
+        if(!noPush){ const url=new URL(window.location); url.searchParams.set('tab',t); window.history.pushState({tab:t},'',url); }
+        localStorage.setItem(STORAGE_KEY,t);
+        window.scrollTo({top:0,behavior:'smooth'});
+    }
+    window.addEventListener('popstate', (event) => {
+        const tab = event.state?.tab || new URLSearchParams(window.location.search).get('tab');
+        if(tab && ['shop','orders','profile','chat','support'].includes(tab)) switchTab(tab, true);
+    });
+    async function logout(){
+        await authFetch('/api/auth/logout',{method:'POST'});
+        currentUser = null; isPremium = false;
+        document.getElementById('appContent').classList.add('hidden');
+        document.getElementById('bottomNav').classList.add('hidden');
+        showLogin(); updateHeader('shop');
+    }
+    init();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
