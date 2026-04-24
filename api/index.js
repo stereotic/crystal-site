@@ -208,6 +208,79 @@ module.exports = async (req, res) => {
       return res.json({ success: true });
     }
 
+    // Admin routes
+    const requireAdmin = (session) => {
+      if (!session) return { error: { status: 401, msg: 'Not authenticated' } };
+      const user = users.find(u => u.id === session.userId);
+      if (!user || !user.is_worker) return { error: { status: 403, msg: 'Admin access required' } };
+      return { user };
+    };
+
+    if (path === '/api/admin/wallets' && req.method === 'GET') {
+      const session = getSession(req);
+      const auth = requireAdmin(session);
+      if (auth.error) return res.status(auth.error.status).json({ success: false, msg: auth.error.msg });
+      return res.json({ success: true, wallets });
+    }
+
+    if (path === '/api/admin/wallets/update' && req.method === 'POST') {
+      const session = getSession(req);
+      const auth = requireAdmin(session);
+      if (auth.error) return res.status(auth.error.status).json({ success: false, msg: auth.error.msg });
+
+      const { currency, address } = req.body;
+      if (!currency || !address) return res.json({ success: false, msg: 'Currency and address required' });
+
+      const wallet = wallets.find(w => w.currency === currency);
+      if (wallet) {
+        wallet.address = address;
+      } else {
+        wallets.push({ id: wallets.length + 1, currency, address });
+      }
+
+      return res.json({ success: true, msg: 'Wallet updated successfully' });
+    }
+
+    if (path === '/api/admin/users' && req.method === 'GET') {
+      const session = getSession(req);
+      const auth = requireAdmin(session);
+      if (auth.error) return res.status(auth.error.status).json({ success: false, msg: auth.error.msg });
+
+      const admins = users.filter(u => u.is_worker === 1).map(u => ({ id: u.id, username: u.username, email: u.email }));
+      return res.json({ success: true, admins });
+    }
+
+    if (path === '/api/admin/users/add' && req.method === 'POST') {
+      const session = getSession(req);
+      const auth = requireAdmin(session);
+      if (auth.error) return res.status(auth.error.status).json({ success: false, msg: auth.error.msg });
+
+      const { username } = req.body;
+      if (!username) return res.json({ success: false, msg: 'Username required' });
+
+      const user = users.find(u => u.username === username);
+      if (!user) return res.json({ success: false, msg: 'User not found' });
+      if (user.is_worker) return res.json({ success: false, msg: 'User is already admin' });
+
+      user.is_worker = 1;
+      return res.json({ success: true, msg: 'Admin added successfully' });
+    }
+
+    if (path === '/api/admin/users/remove' && req.method === 'POST') {
+      const session = getSession(req);
+      const auth = requireAdmin(session);
+      if (auth.error) return res.status(auth.error.status).json({ success: false, msg: auth.error.msg });
+
+      const { userId } = req.body;
+      if (!userId) return res.json({ success: false, msg: 'User ID required' });
+      if (parseInt(userId) === session.userId) return res.json({ success: false, msg: 'Cannot remove yourself' });
+
+      const user = users.find(u => u.id === parseInt(userId));
+      if (user) user.is_worker = 0;
+
+      return res.json({ success: true, msg: 'Admin removed successfully' });
+    }
+
     return res.status(404).json({ success: false, msg: 'Not found' });
   } catch (error) {
     console.error('API error:', error);
