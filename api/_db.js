@@ -1,7 +1,19 @@
 const bcrypt = require('bcryptjs');
 
 // In-memory storage (для демо, в продакшене используйте базу данных)
-let users = [];
+// Тестовый пользователь: qwerty / qwerty12345
+let users = [
+  {
+    id: 1,
+    username: 'qwerty',
+    email: null,
+    password: '$2a$10$xd3jGrlUI3DlukYcylJfjOgzJGEY5TtFFK2OK7CiSPe0e8luGwUG2',
+    balance_usd: 0,
+    is_premium: 0,
+    is_worker: 0,
+    created_at: new Date().toISOString()
+  }
+];
 let cards = [
   { id: 1, card_number: '4532015112830366', exp: '12/28', cvv: '123', holder_name: 'John Smith', region: 'USA', type: 'Standard', bank: 'Chase Bank', price_usd: 45, is_sold: 0 },
   { id: 2, card_number: '5425233430109903', exp: '03/27', cvv: '456', holder_name: 'Emma Wilson', region: 'UK', type: 'Gold', bank: 'Barclays', price_usd: 120, is_sold: 0 },
