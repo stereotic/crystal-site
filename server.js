@@ -685,8 +685,127 @@ app.post('/api/ref/set', (req, res) => {
   res.json({ success: true });
 });
 
+// ==================== ADMIN ROUTES ====================
+// Middleware для проверки админа
+const requireAdmin = (req, res, next) => {
+  if (!req.session.userId) return res.status(401).json({ success: false, msg: 'Not authenticated' });
+
+  const user = queryOne('SELECT is_worker FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || !user.is_worker) {
+    return res.status(403).json({ success: false, msg: 'Admin access required' });
+  }
+  next();
+};
+
+// Получить все кошельки (только для админа)
+app.get('/api/admin/wallets', requireAdmin, (req, res) => {
+  const wallets = queryAll('SELECT * FROM wallets');
+  res.json({ success: true, wallets });
+});
+
+// Обновить адрес кошелька
+app.post('/api/admin/wallets/update', requireAdmin, (req, res) => {
+  try {
+    const { currency, address } = req.body;
+
+    if (!currency || !address) {
+      return res.json({ success: false, msg: 'Currency and address required' });
+    }
+
+    // Проверяем существует ли кошелек
+    const existing = queryOne('SELECT id FROM wallets WHERE currency = ?', [currency]);
+
+    if (existing) {
+      db.run('UPDATE wallets SET address = ? WHERE currency = ?', [address, currency]);
+    } else {
+      db.run('INSERT INTO wallets (currency, address) VALUES (?, ?)', [currency, address]);
+    }
+
+    saveDatabase();
+
+    res.json({ success: true, msg: 'Wallet updated successfully' });
+  } catch (error) {
+    console.error('Wallet update error:', error);
+    res.json({ success: false, msg: 'Failed to update wallet' });
+  }
+});
+
+// Получить список всех администраторов
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+  try {
+    const admins = queryAll('SELECT id, username, email FROM users WHERE is_worker = 1');
+    res.json({ success: true, admins });
+  } catch (error) {
+    console.error('Get admins error:', error);
+    res.json({ success: false, msg: 'Failed to get admins' });
+  }
+});
+
+// Добавить администратора
+app.post('/api/admin/users/add', requireAdmin, (req, res) => {
+  try {
+    const { username } = req.body;
+
+    if (!username) {
+      return res.json({ success: false, msg: 'Username required' });
+    }
+
+    const user = queryOne('SELECT id, is_worker FROM users WHERE username = ?', [username]);
+
+    if (!user) {
+      return res.json({ success: false, msg: 'User not found' });
+    }
+
+    if (user.is_worker) {
+      return res.json({ success: false, msg: 'User is already admin' });
+    }
+
+    db.run('UPDATE users SET is_worker = 1 WHERE id = ?', [user.id]);
+    saveDatabase();
+
+    res.json({ success: true, msg: 'Admin added successfully' });
+  } catch (error) {
+    console.error('Add admin error:', error);
+    res.json({ success: false, msg: 'Failed to add admin' });
+  }
+});
+
+// Удалить администратора
+app.post('/api/admin/users/remove', requireAdmin, (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.json({ success: false, msg: 'User ID required' });
+    }
+
+    // Нельзя удалить самого себя
+    if (parseInt(userId) === req.session.userId) {
+      return res.json({ success: false, msg: 'Cannot remove yourself' });
+    }
+
+    db.run('UPDATE users SET is_worker = 0 WHERE id = ?', [userId]);
+    saveDatabase();
+
+    res.json({ success: true, msg: 'Admin removed successfully' });
+  } catch (error) {
+    console.error('Remove admin error:', error);
+    res.json({ success: false, msg: 'Failed to remove admin' });
+  }
+});
+
 // Serve uploads
 app.use('/uploads', express.static(uploadDir));
+
+// Serve index.html for root route
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Serve admin panel
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
 
 // Start server
 initDatabase().then(() => {

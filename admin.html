@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Panel - Crystal Cards</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body {
+            background: linear-gradient(-45deg, #050505, #0a0f1e, #050a14, #050505);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: #fff;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        .container { max-width: 800px; margin: 0 auto; }
+
+        .header {
+            background: rgba(20,20,25,0.65);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 24px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header p { color: rgba(255,255,255,0.6); }
+
+        .wallet-card {
+            background: rgba(20,20,25,0.65);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 24px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+        }
+
+        .wallet-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .wallet-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #2c64e3, #1e4bb3);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .wallet-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .wallet-currency {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.875rem;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.875rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: rgba(17, 24, 39, 0.8);
+            border: 1px solid rgba(148,163,184,0.15);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #2c64e3;
+            background: rgba(24, 34, 53, 0.9);
+            box-shadow: 0 0 15px rgba(44,100,227,0.2);
+        }
+
+        .btn {
+            padding: 0.875rem 1.5rem;
+            background: linear-gradient(135deg, #2c64e3, #1e4bb3);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(44,100,227,0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(44,100,227,0.5);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-back {
+            background: transparent;
+            border: 1px solid rgba(148,163,184,0.3);
+            margin-bottom: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-back:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: #2c64e3;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .alert.success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #86efac;
+        }
+
+        .alert.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        .current-address {
+            background: rgba(17, 24, 39, 0.5);
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-family: monospace;
+            font-size: 0.75rem;
+            word-break: break-all;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .admin-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background: rgba(17, 24, 39, 0.5);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .admin-item .username {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .admin-item .badge {
+            background: linear-gradient(135deg, #2c64e3, #1e4bb3);
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+
+        .btn-remove {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-remove:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="btn btn-back" onclick="window.location.href='/'">
+            <i class="fas fa-arrow-left"></i> Вернуться на сайт
+        </button>
+
+        <div class="header">
+            <h1><i class="fas fa-shield-alt"></i> Админ-панель</h1>
+            <p>Управление адресами кошельков для пополнения</p>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <!-- Управление администраторами -->
+        <div class="wallet-card">
+            <div class="wallet-header">
+                <div class="wallet-icon"><i class="fas fa-users-cog"></i></div>
+                <div>
+                    <div class="wallet-name">Управление администраторами</div>
+                    <div class="wallet-currency">Добавление и удаление админов</div>
+                </div>
+            </div>
+
+            <div id="admins-list" style="margin-bottom: 1rem;"></div>
+
+            <div class="input-group">
+                <label>Добавить администратора</label>
+                <input
+                    type="text"
+                    id="new-admin-username"
+                    placeholder="Введите username пользователя"
+                >
+            </div>
+
+            <button class="btn" onclick="addAdmin()">
+                <i class="fas fa-user-plus"></i> Добавить админа
+            </button>
+        </div>
+
+        <div id="wallets-container"></div>
+    </div>
+
+    <script>
+        const wallets = [
+            { currency: 'BTC', name: 'Bitcoin', icon: '₿' },
+            { currency: 'ETH', name: 'Ethereum', icon: 'Ξ' },
+            { currency: 'USDT_TRC20', name: 'USDT (TRC20)', icon: '₮' },
+            { currency: 'USDT_BEP20', name: 'USDT (BEP20)', icon: '₮' }
+        ];
+
+        let currentWallets = {};
+        let adminsList = [];
+
+        async function loadWallets() {
+            try {
+                const res = await fetch('/api/admin/wallets');
+                const data = await res.json();
+
+                if (!data.success) {
+                    if (res.status === 403) {
+                        showAlert('У вас нет прав администратора', 'error');
+                        setTimeout(() => window.location.href = '/', 2000);
+                    }
+                    return;
+                }
+
+                currentWallets = {};
+                data.wallets.forEach(w => {
+                    currentWallets[w.currency] = w.address;
+                });
+
+                renderWallets();
+            } catch (error) {
+                console.error('Load error:', error);
+                showAlert('Ошибка загрузки данных', 'error');
+            }
+        }
+
+        async function loadAdmins() {
+            try {
+                const res = await fetch('/api/admin/users');
+                const data = await res.json();
+
+                if (data.success) {
+                    adminsList = data.admins;
+                    renderAdmins();
+                }
+            } catch (error) {
+                console.error('Load admins error:', error);
+            }
+        }
+
+        function renderAdmins() {
+            const container = document.getElementById('admins-list');
+            if (adminsList.length === 0) {
+                container.innerHTML = '<p style="color: rgba(255,255,255,0.5); font-size: 0.875rem;">Нет администраторов</p>';
+                return;
+            }
+
+            container.innerHTML = adminsList.map(admin => `
+                <div class="admin-item">
+                    <div>
+                        <span class="username">${admin.username}</span>
+                        <span class="badge">ADMIN</span>
+                    </div>
+                    <button class="btn-remove" onclick="removeAdmin(${admin.id}, '${admin.username}')">
+                        <i class="fas fa-trash"></i> Удалить
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function addAdmin() {
+            const input = document.getElementById('new-admin-username');
+            const username = input.value.trim();
+
+            if (!username) {
+                showAlert('Введите username', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin/users/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showAlert(`Пользователь ${username} теперь администратор`, 'success');
+                    input.value = '';
+                    await loadAdmins();
+                } else {
+                    showAlert(data.msg || 'Ошибка добавления', 'error');
+                }
+            } catch (error) {
+                console.error('Add admin error:', error);
+                showAlert('Ошибка добавления', 'error');
+            }
+        }
+
+        async function removeAdmin(userId, username) {
+            if (!confirm(`Удалить права администратора у ${username}?`)) return;
+
+            try {
+                const res = await fetch('/api/admin/users/remove', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showAlert(`Права администратора удалены у ${username}`, 'success');
+                    await loadAdmins();
+                } else {
+                    showAlert(data.msg || 'Ошибка удаления', 'error');
+                }
+            } catch (error) {
+                console.error('Remove admin error:', error);
+                showAlert('Ошибка удаления', 'error');
+            }
+        }
+
+        function renderWallets() {
+            const container = document.getElementById('wallets-container');
+            container.innerHTML = wallets.map(wallet => `
+                <div class="wallet-card">
+                    <div class="wallet-header">
+                        <div class="wallet-icon">${wallet.icon}</div>
+                        <div>
+                            <div class="wallet-name">${wallet.name}</div>
+                            <div class="wallet-currency">${wallet.currency}</div>
+                        </div>
+                    </div>
+
+                    <div class="current-address">
+                        <strong>Текущий адрес:</strong><br>
+                        ${currentWallets[wallet.currency] || 'Не установлен'}
+                    </div>
+
+                    <div class="input-group">
+                        <label>Новый адрес кошелька</label>
+                        <input
+                            type="text"
+                            id="input-${wallet.currency}"
+                            placeholder="Введите адрес ${wallet.currency}"
+                            value="${currentWallets[wallet.currency] || ''}"
+                        >
+                    </div>
+
+                    <button class="btn" onclick="updateWallet('${wallet.currency}')">
+                        <i class="fas fa-save"></i> Сохранить
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function updateWallet(currency) {
+            const input = document.getElementById(`input-${currency}`);
+            const address = input.value.trim();
+
+            if (!address) {
+                showAlert('Введите адрес кошелька', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin/wallets/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currency, address })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showAlert(`Адрес ${currency} успешно обновлен`, 'success');
+                    await loadWallets();
+                } else {
+                    showAlert(data.msg || 'Ошибка обновления', 'error');
+                }
+            } catch (error) {
+                console.error('Update error:', error);
+                showAlert('Ошибка сохранения', 'error');
+            }
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert ${type}`;
+            alert.style.display = 'block';
+
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 3000);
+        }
+
+        // Загружаем данные при старте
+        loadWallets();
+        loadAdmins();
+    </script>
+</body>
+</html>
