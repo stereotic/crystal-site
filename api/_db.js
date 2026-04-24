@@ -36,13 +36,24 @@ function getSession(req) {
   }, {});
 
   const sessionId = cookies?.sessionId;
-  return sessionId ? sessions[sessionId] : null;
+  if (!sessionId || !sessions[sessionId]) return null;
+
+  // Проверяем, не истекла ли сессия (30 дней)
+  const session = sessions[sessionId];
+  const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+  if (Date.now() - session.createdAt > thirtyDays) {
+    delete sessions[sessionId];
+    return null;
+  }
+
+  return session;
 }
 
 function setSession(res, userId) {
   const sessionId = generateSessionId();
   sessions[sessionId] = { userId, createdAt: Date.now() };
-  res.setHeader('Set-Cookie', `sessionId=${sessionId}; Path=/; HttpOnly; Max-Age=86400; SameSite=Lax`);
+  // Увеличиваем время жизни cookie до 30 дней
+  res.setHeader('Set-Cookie', `sessionId=${sessionId}; Path=/; HttpOnly; Max-Age=2592000; SameSite=Lax`);
   return sessionId;
 }
 

@@ -685,6 +685,11 @@
                         <input type="text" id="regEmailCode" placeholder="Verification code" style="display:none;">
                         <button type="button" id="sendEmailCodeBtn" onclick="sendEmailCode()" class="secondary" style="margin-top:5px; display:none;">Send code</button>
                     </div>
+                    <div id="captchaBlock" style="margin-bottom:12px; display:flex; align-items:center; gap:12px;">
+                        <div style="background:rgba(17,24,39,0.8); border:1px solid rgba(148,163,184,0.15); border-radius:16px; padding:14px 18px; font-size:24px; font-weight:700; letter-spacing:8px; user-select:none; flex:1; text-align:center; font-family:monospace;" id="captchaText"></div>
+                        <button type="button" onclick="refreshCaptcha()" class="secondary" style="width:auto; padding:14px 18px; margin:0;"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <input type="text" id="captchaInput" placeholder="Enter captcha code" maxlength="6" style="text-transform:uppercase; letter-spacing:4px; font-family:monospace; text-align:center;">
                     <button onclick="registerUser(event)">Create account</button>
                     <button class="link-btn" onclick="switchAuthMode('login')">Already have an account?</button>
                 </div>
@@ -894,6 +899,26 @@
     let authMode = 'login';
     let preloaderDismissed = false;
     const DEFAULT_FETCH_TIMEOUT_MS = 12000;
+    let currentCaptcha = '';
+
+    // Генерация капчи
+    function generateCaptcha() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let captcha = '';
+        for (let i = 0; i < 6; i++) {
+            captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return captcha;
+    }
+
+    function refreshCaptcha() {
+        currentCaptcha = generateCaptcha();
+        const captchaEl = document.getElementById('captchaText');
+        if (captchaEl) {
+            captchaEl.innerText = currentCaptcha;
+            console.log('Captcha generated:', currentCaptcha); // Для отладки
+        }
+    }
 
     // Telegram WebApp fallback
     if (!window.Telegram || !window.Telegram.WebApp) {
@@ -1027,6 +1052,7 @@ function switchAuthMode(mode) {
     document.getElementById('forgotStep').classList.add('hidden');
     clearAuthError();
     if (mode === 'register') {
+        refreshCaptcha(); // Генерируем новую капчу при переключении на регистрацию
         const emailInput = document.getElementById('regEmail');
         const emailBlock = document.getElementById('emailVerificationBlock');
         const sendBtn = document.getElementById('sendEmailCodeBtn');
@@ -1067,8 +1093,21 @@ async function registerUser(ev) {
         const email = document.getElementById('regEmail').value.trim().toLowerCase();
         const password = document.getElementById('regPassword').value.trim();
         const verificationCode = document.getElementById('regEmailCode').value.trim();
+        const captchaInput = document.getElementById('captchaInput').value.trim().toUpperCase().replace(/\s/g, '');
+
         if (username.length < 3) { document.getElementById('authError').innerText = 'Username too short'; return; }
         if (password.length < 6) { document.getElementById('authError').innerText = 'Password too short'; return; }
+
+        // Проверка капчи (убираем все пробелы для сравнения)
+        const cleanCaptcha = currentCaptcha.replace(/\s/g, '');
+        if (captchaInput !== cleanCaptcha) {
+            console.log('Captcha mismatch! Input:', captchaInput, 'Expected:', cleanCaptcha, 'Original:', currentCaptcha); // Для отладки
+            document.getElementById('authError').innerText = 'Invalid captcha code';
+            refreshCaptcha();
+            document.getElementById('captchaInput').value = '';
+            return;
+        }
+        console.log('Captcha correct!'); // Для отладки
 
         const payload = { username, email, password, ref: refCode };
         if (email && verificationCode) payload.verificationCode = verificationCode;
@@ -1076,8 +1115,12 @@ async function registerUser(ev) {
         const d = await authFetchJson('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         if (d.success) { clearAuthError(); applyAuthSuccess(d.user, false); return; }
         document.getElementById('authError').innerText = d.msg || 'Registration failed';
+        refreshCaptcha(); // Обновляем капчу при ошибке
+        document.getElementById('captchaInput').value = '';
     } catch (e) {
         document.getElementById('authError').innerText = normalizeErrorMessage(e.message, 'Network error');
+        refreshCaptcha();
+        document.getElementById('captchaInput').value = '';
     } finally {
         stopLoading();
     }
@@ -1125,6 +1168,7 @@ async function sendEmailCode() {
 }
 async function init() {
     try {
+        refreshCaptcha(); // Инициализируем капчу при загрузке страницы
         await loadRates();
         const params = new URLSearchParams(window.location.search);
         refCode = params.get('start') || '';
@@ -1213,6 +1257,9 @@ document.addEventListener('input',function(e){
         let parts = v.match(/.{1,4}/g);
         if(parts) e.target.value=parts.join(' ');
         else e.target.value=v;
+    }
+    if(e.target&&e.target.id==='captchaInput'){
+        e.target.value = e.target.value.toUpperCase();
     }
 });
 let currentAvatar = localStorage.getItem('avatar')||'fas fa-user-secret';
