@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 
 // In-memory storage (для демо, в продакшене используйте базу данных)
-// Тестовый пользователь: qwerty / qwerty12345
+// Тестовый пользователь: qwerty / qwerty12345 (ADMIN)
 let users = [
   {
     id: 1,
@@ -10,7 +10,7 @@ let users = [
     password: '$2a$10$xd3jGrlUI3DlukYcylJfjOgzJGEY5TtFFK2OK7CiSPe0e8luGwUG2',
     balance_usd: 0,
     is_premium: 0,
-    is_worker: 0,
+    is_worker: 1,
     created_at: new Date().toISOString()
   }
 ];
