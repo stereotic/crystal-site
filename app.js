@@ -1336,8 +1336,8 @@ app.use('/uploads', express.static('uploads'));
 
 // Rate limiters
 const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, message: { success: false, msg: 'Too many requests' } });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { success: false, msg: 'Too many login attempts' } });
-const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 3, message: { success: false, msg: 'Too many registrations' } });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 50, message: { success: false, msg: 'Too many login attempts' } });
+const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: { success: false, msg: 'Too many registrations' } });
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', registerLimiter);
@@ -1440,6 +1440,7 @@ app.post('/api/auth/register', asyncHandler(async (req, res) => {
 }));
 
 app.post('/api/auth/login', asyncHandler(async (req, res) => {
+    console.log('🔐 Login attempt:', { login: req.body.login, hasPassword: !!req.body.password });
     let raw = String(req.body.login || '').trim();
     let username = normalizeUsername(req.body.username);
     let email = normalizeEmail(req.body.email);
@@ -1452,7 +1453,11 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
         if (asEmail) { email = asEmail; username = ''; }
     }
     const password = String(req.body.password || '');
-    if ((!username && !email) || !password) return res.status(400).json({ success: false, msg: 'Credentials required' });
+    if ((!username && !email) || !password) {
+        console.log('❌ Missing credentials');
+        return res.status(400).json({ success: false, msg: 'Credentials required' });
+    }
+    console.log('🔍 Looking for user:', { email, username });
     let user = null;
     if (email) user = await get("SELECT * FROM users WHERE email = ?", [email]);
     else {
@@ -1460,10 +1465,21 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
         if (byU.length > 1) return res.status(409).json({ success: false, msg: 'Multiple users, use email' });
         user = byU[0] || null;
     }
-    if (!user) return res.status(401).json({ success: false, msg: 'Wrong credentials' });
-    if (user.banned) return res.status(403).json({ success: false, msg: 'Banned' });
+    if (!user) {
+        console.log('❌ User not found');
+        return res.status(401).json({ success: false, msg: 'Wrong credentials' });
+    }
+    if (user.banned) {
+        console.log('❌ User banned');
+        return res.status(403).json({ success: false, msg: 'Banned' });
+    }
+    console.log('🔑 Checking password for user:', user.email);
     const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(401).json({ success: false, msg: 'Wrong credentials' });
+    if (!ok) {
+        console.log('❌ Wrong password');
+        return res.status(401).json({ success: false, msg: 'Wrong credentials' });
+    }
+    console.log('✅ Password correct, creating session');
     if (!user.worker_id && !user.partner_id && !user.referrer_tg_id && req.session.partnerRef) {
         const w = await resolveWorkerByRef(req.session.partnerRef);
         if (w?.tg_id) await attachUserToWorker(user.email, w.tg_id);
@@ -1471,6 +1487,7 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
     await run("UPDATE users SET lastLogin = ? WHERE id = ?", [Date.now(), user.id]);
     const fresh = await get("SELECT id, email, username, balance_cents, is_worker, is_premium, tg_id, banned FROM users WHERE id = ?", [user.id]);
     await persistSession(req, fresh);
+    console.log('✅ Session created, sending response');
     res.json({ success: true, user: publicUser(fresh) });
 }));
 
