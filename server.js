@@ -1,3 +1,5 @@
+require('dotenv').config();
+const fetch = require('node-fetch');
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
@@ -194,8 +196,10 @@ app.use(session({
   cookie: {
     secure: false,
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000
-  }
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'lax'
+  },
+  rolling: true
 }));
 
 // Serve static files
@@ -242,7 +246,15 @@ app.post('/api/auth/register', async (req, res) => {
     const user = queryOne('SELECT id, username, email, balance_usd, is_premium, is_worker FROM users WHERE username = ?', [username]);
     req.session.userId = user.id;
 
-    res.json({ success: true, user });
+    // Сохраняем сессию явно перед отправкой ответа
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.json({ success: false, msg: 'Session error' });
+      }
+
+      res.json({ success: true, user });
+    });
   } catch (error) {
     console.error('Registration error:', error);
     res.json({ success: false, msg: 'Registration failed' });
@@ -252,6 +264,10 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { login, password } = req.body;
+
+    if (!login || !password) {
+      return res.json({ success: false, msg: 'Please provide login and password' });
+    }
 
     const user = queryOne('SELECT * FROM users WHERE username = ? OR email = ?', [login, login]);
 
@@ -266,16 +282,24 @@ app.post('/api/auth/login', async (req, res) => {
 
     req.session.userId = user.id;
 
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        balance_usd: user.balance_usd,
-        is_premium: user.is_premium,
-        is_worker: user.is_worker
+    // Сохраняем сессию явно перед отправкой ответа
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.json({ success: false, msg: 'Session error' });
       }
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          balance_usd: user.balance_usd,
+          is_premium: user.is_premium,
+          is_worker: user.is_worker
+        }
+      });
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -543,7 +567,7 @@ app.get('/api/support/history', requireAuth, (req, res) => {
   res.json(messages);
 });
 
-app.post('/api/support/send', requireAuth, (req, res) => {
+app.post('/api/support/send', requireAuth, async (req, res) => {
   try {
     const { message } = req.body;
 
@@ -554,6 +578,30 @@ app.post('/api/support/send', requireAuth, (req, res) => {
     ]);
     saveDatabase();
 
+    // Отправляем сообщение в Telegram бот
+    const user = queryOne('SELECT username, email FROM users WHERE id = ?', [req.session.userId]);
+
+    try {
+      const botResponse = await fetch('http://localhost:3001/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: process.env.WEBHOOK_SECRET || '7e18b08fe0d112d97865caf050dc6268ccb6c29df933f1b9b3d97ae36c7b5132',
+          userId: req.session.userId.toString(),
+          userName: user.username,
+          userEmail: user.email || 'Не указан',
+          message: message
+        })
+      });
+
+      if (!botResponse.ok) {
+        console.error('Failed to send to bot:', await botResponse.text());
+      }
+    } catch (botError) {
+      console.error('Bot notification error:', botError.message);
+      // Не прерываем работу, если бот недоступен
+    }
+
     res.json({ success: true });
   } catch (error) {
     console.error('Support message error:', error);
@@ -561,7 +609,7 @@ app.post('/api/support/send', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/support/upload', requireAuth, upload.single('file'), (req, res) => {
+app.post('/api/support/upload', requireAuth, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.json({ success: false, msg: 'No file uploaded' });
@@ -577,10 +625,58 @@ app.post('/api/support/upload', requireAuth, upload.single('file'), (req, res) =
     ]);
     saveDatabase();
 
+    // Уведомляем бот о загрузке файла
+    const user = queryOne('SELECT username, email FROM users WHERE id = ?', [req.session.userId]);
+
+    try {
+      const fullFilePath = path.join(__dirname, 'uploads', req.file.filename);
+
+      await fetch('http://localhost:3001/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: process.env.WEBHOOK_SECRET || '7e18b08fe0d112d97865caf050dc6268ccb6c29df933f1b9b3d97ae36c7b5132',
+          userId: req.session.userId.toString(),
+          userName: user.username,
+          userEmail: user.email || 'Не указан',
+          message: `📎 ${req.file.originalname}`,
+          fileType: req.file.mimetype,
+          filePath: fullFilePath
+        })
+      });
+    } catch (botError) {
+      console.error('Bot notification error:', botError.message);
+    }
+
     res.json({ success: true });
   } catch (error) {
     console.error('File upload error:', error);
     res.json({ success: false, msg: 'Upload failed' });
+  }
+});
+
+// Endpoint для получения ответов от бота
+app.post('/api/support/bot-reply', async (req, res) => {
+  try {
+    const { secret, userId, message } = req.body;
+
+    // Проверяем секретный ключ
+    if (secret !== (process.env.WEBHOOK_SECRET || '7e18b08fe0d112d97865caf050dc6268ccb6c29df933f1b9b3d97ae36c7b5132')) {
+      return res.status(403).json({ success: false, msg: 'Invalid secret' });
+    }
+
+    // Добавляем ответ админа в базу
+    db.run('INSERT INTO support_messages (user_id, role, text) VALUES (?, ?, ?)', [
+      parseInt(userId),
+      'admin',
+      message
+    ]);
+    saveDatabase();
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Bot reply error:', error);
+    res.status(500).json({ success: false, msg: 'Failed to save reply' });
   }
 });
 
