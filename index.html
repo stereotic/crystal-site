@@ -1052,7 +1052,8 @@ function switchAuthMode(mode) {
     document.getElementById('forgotStep').classList.add('hidden');
     clearAuthError();
     if (mode === 'register') {
-        refreshCaptcha(); // Генерируем новую капчу при переключении на регистрацию
+        // Генерируем капчу после того как форма станет видимой
+        setTimeout(() => refreshCaptcha(), 50);
         const emailInput = document.getElementById('regEmail');
         const emailBlock = document.getElementById('emailVerificationBlock');
         const sendBtn = document.getElementById('sendEmailCodeBtn');
@@ -1168,7 +1169,6 @@ async function sendEmailCode() {
 }
 async function init() {
     try {
-        refreshCaptcha(); // Инициализируем капчу при загрузке страницы
         await loadRates();
         const params = new URLSearchParams(window.location.search);
         refCode = params.get('start') || '';
