@@ -19,7 +19,16 @@ export class TelegramSupportBot {
     @inject('ISupportRepository') private supportRepository: ISupportRepository
   ) {
     const config = configService.get();
-    this.bot = new Telegraf(config.telegram.userBotToken);
+    const botToken = config.telegram.supportBotToken;
+
+    logger.info('Initializing TelegramSupportBot', {
+      tokenLength: botToken?.length || 0,
+      tokenPrefix: botToken?.substring(0, 10) || 'missing',
+      adminIdsCount: config.telegram.adminIds.length,
+      adminIds: config.telegram.adminIds
+    });
+
+    this.bot = new Telegraf(botToken);
     this.setupHandlers(config.telegram.adminIds);
   }
 
@@ -137,10 +146,21 @@ export class TelegramSupportBot {
 
   public async start(): Promise<void> {
     try {
-      await this.bot.launch();
-      logger.info('Telegram support bot started');
+      logger.info('Launching Telegram bot...');
+
+      // Add timeout to prevent hanging
+      const launchPromise = this.bot.launch();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Bot launch timeout after 10 seconds')), 10000)
+      );
+
+      await Promise.race([launchPromise, timeoutPromise]);
+      logger.info('✅ Telegram support bot launched successfully');
     } catch (error) {
-      logger.error('Failed to start Telegram bot', { error });
+      logger.error('❌ Failed to launch Telegram bot', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
   }

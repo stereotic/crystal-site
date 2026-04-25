@@ -8,10 +8,10 @@ import path from 'path';
 import { configService } from '../config';
 import { logger } from './infrastructure/logger';
 import { errorHandler } from './presentation/middleware/errorHandler';
-import { authRoutes, cardRoutes, supportRoutes } from './presentation/http';
+import { authRoutes, cardRoutes, supportRoutes, depositRoutes } from './presentation/http';
 import './container'; // Initialize DI container
 import { container } from './container';
-import { TelegramSupportBot } from './infrastructure/telegram';
+import { TelegramSupportBot, TelegramControlBot } from './infrastructure/telegram';
 
 const SQLiteStore = require('connect-sqlite3')(session);
 
@@ -93,6 +93,7 @@ app.use('/api', apiLimiter);
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/cards', cardRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/deposit', depositRoutes);
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -111,13 +112,29 @@ app.listen(PORT, async () => {
   logger.info(`🌐 Domain: ${config.domain}`);
 
   // Start Telegram bot (only in development, not in serverless)
+  logger.info('Checking bot startup conditions', {
+    isProduction: configService.isProduction(),
+    enableBotPolling: process.env.ENABLE_BOT_POLLING,
+    nodeEnv: config.nodeEnv
+  });
+
   if (!configService.isProduction() || process.env.ENABLE_BOT_POLLING === 'true') {
+    logger.info('Starting Telegram bots...');
     try {
       const telegramBot = container.resolve(TelegramSupportBot);
+      logger.info('TelegramSupportBot resolved from container');
       await telegramBot.start();
       logger.info('✅ Telegram support bot started in polling mode');
+
+      const controlBot = container.resolve(TelegramControlBot);
+      logger.info('TelegramControlBot resolved from container');
+      await controlBot.start();
+      logger.info('✅ Telegram control bot started in polling mode');
     } catch (error) {
-      logger.error('❌ Failed to start Telegram bot', { error });
+      logger.error('❌ Failed to start Telegram bots', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
     }
   } else {
     logger.info('ℹ️ Telegram bot polling disabled in production (use webhooks or separate bot service)');
@@ -129,6 +146,8 @@ process.on('SIGTERM', () => {
   logger.info('SIGTERM received, shutting down gracefully');
   const telegramBot = container.resolve(TelegramSupportBot);
   telegramBot.stop();
+  const controlBot = container.resolve(TelegramControlBot);
+  controlBot.stop();
   process.exit(0);
 });
 
@@ -136,6 +155,8 @@ process.on('SIGINT', () => {
   logger.info('SIGINT received, shutting down gracefully');
   const telegramBot = container.resolve(TelegramSupportBot);
   telegramBot.stop();
+  const controlBot = container.resolve(TelegramControlBot);
+  controlBot.stop();
   process.exit(0);
 });
 

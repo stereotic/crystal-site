@@ -38,6 +38,18 @@ export class DatabaseConnection {
 
     // Create indexes for better performance
     this.createIndexes();
+
+    // Run migrations
+    this.runMigrations();
+  }
+
+  private async runMigrations(): Promise<void> {
+    try {
+      const { runMigrations } = await import('./migrations/runMigrations');
+      await runMigrations(this);
+    } catch (error) {
+      console.error('Migration error:', error);
+    }
   }
 
   private createIndexes(): void {

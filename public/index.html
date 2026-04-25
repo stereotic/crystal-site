@@ -1343,11 +1343,33 @@ function updateWithdrawCrypto(){
 document.getElementById('withdrawAmount')?.addEventListener('input', updateWithdrawCrypto);
 async function requestDeposit(){
     if(!selectedDepositAmount) return alert('Please select a deposit amount first.');
+
+    // If we don't have a request ID yet, create one first
+    if(!lastDepositRequestId) {
+        const btn = document.querySelector('#depositModal .check-payment-btn');
+        const stopLoading = setButtonLoading(btn,'Creating request...');
+        try {
+            const d = await authFetchJson('/api/deposit/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:selectedDepositAmount,currency:selectedMethod})});
+            if(d.success){
+                lastDepositRequestId=d.requestId;
+                document.getElementById('walletAddressText').innerText=d.walletAddress;
+                alert('Request created! Please transfer funds to the address above, then click "Check Payment" again.');
+            }
+            else alert('Error: '+d.msg);
+        } catch(e){ alert(normalizeErrorMessage(e.message,'Network error')); } finally{ stopLoading(); }
+        return;
+    }
+
+    // If we have a request ID, send check payment notification
     const btn = document.querySelector('#depositModal .check-payment-btn');
-    const stopLoading = setButtonLoading(btn,'Submitting...');
+    const stopLoading = setButtonLoading(btn,'Checking payment...');
     try {
-        const d = await authFetchJson('/api/deposit/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:selectedDepositAmount,currency:selectedMethod})});
-        if(d.success){ lastDepositRequestId=d.requestId; document.getElementById('walletAddressText').innerText=d.walletAddress; alert('Request sent! Please transfer the funds.'); closeDepositModal(); checkDepositStatus(); }
+        const d = await authFetchJson('/api/deposit/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:lastDepositRequestId})});
+        if(d.success){
+            alert('Payment verification request sent to admin! Please wait for confirmation.');
+            closeDepositModal();
+            checkDepositStatus();
+        }
         else alert('Error: '+d.msg);
     } catch(e){ alert(normalizeErrorMessage(e.message,'Network error')); } finally{ stopLoading(); }
 }

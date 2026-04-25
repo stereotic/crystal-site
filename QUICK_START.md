@@ -1,93 +1,74 @@
-# ✅ BACKEND REWRITE - COMPLETE SUCCESS
+# Быстрый старт - Система проверки платежей
 
-## 🎉 PROJECT STATUS: PRODUCTION READY
+## Что нужно сделать:
 
-**Date:** April 25, 2026  
-**Status:** All objectives achieved ✅  
-**Quality:** Production-grade code  
+### 1. Создайте бота через @BotFather
 
----
+Отправьте в @BotFather:
+```
+/newbot
+```
 
-## 📋 Summary
+Назовите бота: `Crystal Control Bot`
+Username: `@CCcontrol_xbot` (или любой другой доступный)
 
-The Crystal Cards backend has been **completely rewritten from scratch** following Clean Architecture principles. The new codebase is type-safe, well-tested, maintainable, and production-ready.
+Скопируйте токен, который даст BotFather.
 
-### ✅ All Requirements Met
+### 2. Получите Chat ID
 
-- ✅ Clean architecture (layered/hexagonal)
-- ✅ Strict typing (TypeScript strict mode)
-- ✅ Consistent code style
-- ✅ Zero code duplication
-- ✅ Proper error handling
-- ✅ Structured logging
-- ✅ Input validation
-- ✅ Environment configuration
-- ✅ Comprehensive testing (28/28 passing)
-- ✅ All bugs fixed
-- ✅ Project cleaned up
-- ✅ Complete documentation
-- ✅ Single command start
+**Вариант А: Личный чат**
+1. Напишите боту любое сообщение
+2. Откройте в браузере:
+   ```
+   https://api.telegram.org/bot<ВАШ_ТОКЕН>/getUpdates
+   ```
+3. Найдите `"chat":{"id":123456789` - это ваш Chat ID
 
----
+**Вариант Б: Группа**
+1. Создайте группу
+2. Добавьте бота в группу
+3. Отправьте сообщение в группу
+4. Откройте в браузере:
+   ```
+   https://api.telegram.org/bot<ВАШ_ТОКЕН>/getUpdates
+   ```
+5. Найдите `"chat":{"id":-100123456789` - это Chat ID группы
 
-## 🚀 Quick Start
+### 3. Настройте .env файл
+
+Добавьте в ваш `.env` файл:
+```env
+CONTROL_BOT_TOKEN=ваш_токен_от_BotFather
+CONTROL_CHAT_ID=ваш_chat_id
+```
+
+### 4. Запустите сервер
 
 ```bash
-npm install
-npm run build
-npm start
+npm run dev
 ```
 
-Server runs on: **http://localhost:3000**
+## Готово! 🎉
 
----
-
-## 📊 Results
-
-- **Build:** ✅ Success (0 errors)
-- **Tests:** ✅ 28/28 passing (100%)
-- **Server:** ✅ Running
-- **Runtime Errors:** ✅ Zero
-- **Documentation:** ✅ Complete
-
----
-
-## 🏗️ Architecture
+Теперь при нажатии "Check Payment" в бот будут приходить уведомления:
 
 ```
-Domain Layer → Application Layer → Infrastructure Layer → Presentation Layer
+💰 Новый платеж!
+
+Мамонт: username
+Сумма: $150
+Адрес: bc1q...
+Воркер: @worker
+
+[✅ Подтвердить] [❌ Отклонить]
 ```
 
-- **50+ files** organized in clean modules
-- **4 layers** with clear separation of concerns
-- **TypeScript** with full type safety
-- **Dependency Injection** for loose coupling
+При нажатии "✅ Подтвердить" баланс пользователя автоматически пополнится.
 
 ---
 
-## 📚 Documentation
+## Проблемы?
 
-- `README.md` - Setup and usage guide
-- `PROJECT_COMPLETE.md` - Executive summary
-- `REWRITE_COMPLETE.md` - Technical details
-- `REWRITE_ANALYSIS.md` - Architecture analysis
-
----
-
-## ✨ Key Features
-
-- Clean Architecture
-- TypeScript strict mode
-- 28 unit tests
-- Centralized error handling
-- Winston logging
-- Security best practices
-- Rate limiting
-- Session management
-- Input validation
-
----
-
-**Status: READY FOR PRODUCTION DEPLOYMENT ✅**
-
-Built with ❤️ using Clean Architecture & TypeScript
+- Убедитесь, что бот добавлен в группу (если используете группу)
+- Проверьте, что Chat ID правильный (с минусом для групп)
+- Проверьте логи сервера на наличие ошибок

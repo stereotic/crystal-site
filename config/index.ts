@@ -21,8 +21,11 @@ interface Config {
   telegram: {
     userBotToken: string;
     adminBotToken: string;
+    supportBotToken: string;
+    controlBotToken: string;
     botUsername: string;
     adminIds: string[];
+    controlChatId: string;
   };
   webhookSecret: string;
   supportBotUrl: string;
@@ -49,8 +52,11 @@ class ConfigService {
       telegram: {
         userBotToken: process.env.USER_BOT_TOKEN || '',
         adminBotToken: process.env.ADMIN_BOT_TOKEN || '',
+        supportBotToken: process.env.SUPPORT_BOT_TOKEN || '',
+        controlBotToken: process.env.CONTROL_BOT_TOKEN || '',
         botUsername: process.env.BOT_USERNAME || 'CrystalCC_xBot',
         adminIds: (process.env.ADMIN_IDS || '').split(',').map(id => id.trim()).filter(id => id),
+        controlChatId: process.env.CONTROL_CHAT_ID || '',
       },
       webhookSecret: process.env.WEBHOOK_SECRET || '',
       supportBotUrl: process.env.SUPPORT_BOT_URL || 'http://localhost:3002',
