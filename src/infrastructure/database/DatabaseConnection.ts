@@ -39,8 +39,8 @@ export class DatabaseConnection {
     // Create indexes for better performance
     this.createIndexes();
 
-    // Run migrations
-    this.runMigrations();
+    // Run migrations after indexes are created
+    setTimeout(() => this.runMigrations(), 100);
   }
 
   private async runMigrations(): Promise<void> {
@@ -54,6 +54,13 @@ export class DatabaseConnection {
 
   private createIndexes(): void {
     if (!this.db) return;
+
+    // First ensure is_sold column exists
+    this.db.run('ALTER TABLE cards ADD COLUMN is_sold INTEGER DEFAULT 0', (err) => {
+      if (err && !err.message.includes('duplicate column name')) {
+        console.error('Column addition error:', err);
+      }
+    });
 
     const indexes = [
       'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)',

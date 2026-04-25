@@ -8,6 +8,21 @@ import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
+// Get available wallets
+router.get('/wallets', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const db = container.resolve(DatabaseConnection);
+    const wallets = await db.query<{ id: number; currency: string; address: string }>(
+      'SELECT id, currency, address FROM wallets'
+    );
+
+    res.json(wallets);
+  } catch (error) {
+    logger.error('Error fetching wallets', { error });
+    next(error);
+  }
+});
+
 // Request deposit
 router.post('/request', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {

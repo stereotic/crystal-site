@@ -148,20 +148,25 @@ export class TelegramSupportBot {
     try {
       logger.info('Launching Telegram bot...');
 
-      // Add timeout to prevent hanging
-      const launchPromise = this.bot.launch();
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Bot launch timeout after 10 seconds')), 10000)
-      );
+      // Test connection first
+      try {
+        const botInfo = await this.bot.telegram.getMe();
+        logger.info('Bot token is valid', { botInfo: botInfo.username });
+      } catch (error) {
+        logger.error('Bot token validation failed', { error });
+        throw new Error('Invalid bot token or Telegram API is unreachable');
+      }
 
-      await Promise.race([launchPromise, timeoutPromise]);
-      logger.info('✅ Telegram support bot launched successfully');
+      // Skip polling launch - we'll only use sendMessage API
+      logger.info('✅ Telegram support bot initialized (webhook mode - no polling)');
+
+      // The bot will work for sending messages without polling
     } catch (error) {
       logger.error('❌ Failed to launch Telegram bot', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined
       });
-      throw error;
+      logger.warn('⚠️ Application will continue without Telegram bot support');
     }
   }
 

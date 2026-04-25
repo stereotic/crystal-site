@@ -3,7 +3,7 @@ import { ISupportRepository, SupportMessage } from '../../domain/repositories';
 import { DatabaseConnection } from './DatabaseConnection';
 
 interface MessageRow {
-  id: string;
+  id: number;
   user_email: string;
   role: string;
   text: string;
@@ -19,12 +19,10 @@ export class SupportRepository implements ISupportRepository {
   ) {}
 
   async saveMessage(message: Omit<SupportMessage, 'id'>): Promise<void> {
-    const id = crypto.randomUUID();
     await this.db.run(
-      `INSERT INTO messages (id, user_email, role, text, file_id, file_type, time)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO messages (user_email, role, text, file_id, file_type, time)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        id,
         message.userEmail,
         message.role,
         message.text,
@@ -54,7 +52,7 @@ export class SupportRepository implements ISupportRepository {
 
   private mapToDomain(row: MessageRow): SupportMessage {
     return {
-      id: row.id,
+      id: String(row.id),
       userEmail: row.user_email,
       role: row.role as 'user' | 'admin',
       text: row.text,

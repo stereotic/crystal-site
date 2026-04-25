@@ -85,8 +85,8 @@ const authLimiter = rateLimit({
 });
 
 // Static files
-app.use(express.static(path.join(__dirname, '../public')));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use(express.static(path.join(__dirname, '../../public')));
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
 // API routes
 app.use('/api', apiLimiter);
@@ -94,6 +94,33 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/cards', cardRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/deposit', depositRoutes);
+
+// Telegram webhook endpoint for control bot
+app.post('/webhook/control-bot', express.json(), async (req, res) => {
+  try {
+    const { TelegramControlBot } = await import('./infrastructure/telegram');
+    const controlBot = container.resolve(TelegramControlBot);
+    await controlBot.handleUpdate(req.body);
+    res.sendStatus(200);
+  } catch (error) {
+    logger.error('Webhook error', { error });
+    res.sendStatus(500);
+  }
+});
+
+// Wallets endpoint
+app.get('/api/wallets', async (req, res, next) => {
+  try {
+    const { DatabaseConnection } = await import('./infrastructure/database');
+    const db = container.resolve(DatabaseConnection);
+    const wallets = await db.query<{ id: number; currency: string; address: string }>(
+      'SELECT id, currency, address FROM wallets'
+    );
+    res.json(wallets);
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Health check
 app.get('/health', (_req, res) => {

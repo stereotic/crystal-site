@@ -1501,7 +1501,8 @@ async function loadMyCards(){
     }
     async function loadChat(){
         try {
-            const msgs = await authFetchJson('/api/support/history');
+            const response = await authFetchJson('/api/support/history');
+            const msgs = response.messages || [];
             const box = document.getElementById('chatBox');
             const wasAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 10;
             box.innerHTML = '';
@@ -1523,7 +1524,7 @@ async function loadMyCards(){
                 } else {
                     b.appendChild(document.createTextNode(m.text || ''));
                 }
-                const meta = document.createElement('div'); meta.className = 'message-time'; meta.textContent = new Date(m.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+                const meta = document.createElement('div'); meta.className = 'message-time'; meta.textContent = new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
                 b.appendChild(meta); w.appendChild(b); box.appendChild(w);
             });
             if(wasAtBottom) box.scrollTop = box.scrollHeight;

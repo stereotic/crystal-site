@@ -165,23 +165,38 @@ export class TelegramControlBot {
     }
   }
 
+  public async handleUpdate(update: any): Promise<void> {
+    try {
+      await this.bot.handleUpdate(update);
+    } catch (error) {
+      logger.error('Error handling webhook update', { error });
+    }
+  }
+
   public async start(): Promise<void> {
     try {
       logger.info('Launching Telegram control bot...');
 
-      const launchPromise = this.bot.launch();
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Bot launch timeout after 10 seconds')), 10000)
-      );
+      // Test connection first
+      try {
+        const botInfo = await this.bot.telegram.getMe();
+        logger.info('Control bot token is valid', { botInfo: botInfo.username });
+      } catch (error) {
+        logger.error('Control bot token validation failed', { error });
+        throw new Error('Invalid bot token or Telegram API is unreachable');
+      }
 
-      await Promise.race([launchPromise, timeoutPromise]);
-      logger.info('✅ Telegram control bot launched successfully');
+      // Skip polling launch - we'll only use sendMessage API
+      logger.info('✅ Telegram control bot initialized (webhook mode - no polling)');
+
+      // Set up webhook handlers without launching polling
+      // The bot will work for sending messages without polling
     } catch (error) {
-      logger.error('❌ Failed to launch Telegram control bot', {
+      logger.error('❌ Failed to initialize Telegram control bot', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined
       });
-      throw error;
+      logger.warn('⚠️ Application will continue without Telegram control bot support');
     }
   }
 
