@@ -1187,7 +1187,7 @@ async function init() {
         await loadRegions();
         await loadWallets();
         startPremiumChat();
-        walletInterval = setInterval(loadWallets, 30000);
+        walletInterval = setInterval(loadWallets, 60000);
         loadCards();
         updatePremiumAccess();
     } catch (e) {
@@ -1353,13 +1353,20 @@ async function requestDeposit(){
 }
 function checkDepositStatus(){
     if(!lastDepositRequestId) return;
+    let checkCount = 0;
+    const maxChecks = 30; // Максимум 30 проверок (2 минуты)
     const i = setInterval(async()=>{
+        checkCount++;
+        if(checkCount > maxChecks) {
+            clearInterval(i);
+            return;
+        }
         try {
             const d = await authFetchJson('/api/deposit/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:lastDepositRequestId})});
             if(d.status==='approved'){ alert('Deposit approved!'); clearInterval(i); const m = await authFetchJson('/api/auth/me'); if(m.loggedIn){ currentUser.balance_usd=m.balance_usd; updateDisplay(); } }
             else if(d.status==='rejected'){ alert('Deposit rejected.'); clearInterval(i); }
         } catch(e){}
-    },4000);
+    },5000);
 }
 function openWithdrawModal(){document.getElementById('withdrawModal').classList.remove('hidden');}
 function closeWithdrawModal(){document.getElementById('withdrawModal').classList.add('hidden');}
@@ -1447,7 +1454,7 @@ async function loadMyCards(){
     function startPremiumChat(){
         if(premiumChatInterval) clearInterval(premiumChatInterval);
         loadPremiumMessages();
-        premiumChatInterval = setInterval(loadPremiumMessages,2000);
+        premiumChatInterval = setInterval(loadPremiumMessages,8000);
     }
     async function sendMessage(){
         const m = document.getElementById('msgInput').value;
@@ -1455,7 +1462,7 @@ async function loadMyCards(){
         try {
             const d = await authFetchJson('/api/support/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m})});
             if(d.success){ document.getElementById('msgInput').value=''; await loadChat(); }
-            else alert('Error sending message');
+            else alert('Error sending message: ' + (d.msg || 'Unknown error'));
         } catch(e){ alert(normalizeErrorMessage(e.message,'Network error')); }
     }
     async function uploadFile(){
@@ -1467,7 +1474,7 @@ async function loadMyCards(){
         try {
             const data = await authFetchJson('/api/support/upload',{method:'POST',body:formData});
             if(data.success){ fileInput.value=''; await loadChat(); }
-            else alert('Upload error: '+data.msg);
+            else alert('Upload error: ' + (data.msg || 'Unknown error'));
         } catch(e){ alert(normalizeErrorMessage(e.message,'Network error')); }
     }
     async function loadChat(){
@@ -1533,7 +1540,7 @@ async function loadMyCards(){
         clearIntervals();
         document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active', el.dataset.tab===t));
         ['shopView','ordersView','profileView','chatView','supportView'].forEach(id=>document.getElementById(id).classList.add('hidden'));
-        if(t==='support'){ document.getElementById('supportView').classList.remove('hidden'); loadChat(); chatInterval = setInterval(loadChat,1500); }
+        if(t==='support'){ document.getElementById('supportView').classList.remove('hidden'); loadChat(); chatInterval = setInterval(loadChat,5000); }
         else if(t==='profile'){ document.getElementById('profileView').classList.remove('hidden'); loadMyCards(); loadWallets(); updateHeader(t); }
         else if(t==='shop'){ document.getElementById('shopView').classList.remove('hidden'); loadCards(); updateHeader(t); }
         else if(t==='orders'){ document.getElementById('ordersView').classList.remove('hidden'); updateOrdersView(); updateHeader(t); }

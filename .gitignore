@@ -1,35 +1,46 @@
-# Environment variables
-.env
+# Logs
+logs/
+*.log
 
-# Database files
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
 *.db
 *.db-shm
 *.db-wal
-database.db
-database.db-shm
-database.db-wal
-
-# Node modules
-node_modules/
-
-# Logs
-*.log
-npm-debug.log*
-
-# Uploads
-uploads/
-
-# OS files
-.DS_Store
-Thumbs.db
+sessions.db*
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
 
 # Temporary files
 *.tmp
 *.temp
+tmp/
+temp/
 
-# Vercel
-.vercel
+# Uploads
+uploads/*
+!uploads/.gitkeep

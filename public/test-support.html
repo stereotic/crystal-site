@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Тест поддержки</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1a1a; color: #fff; }
+        .container { max-width: 600px; margin: 0 auto; }
+        input, textarea, button { width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; }
+        button { background: #2c64e3; color: white; border: none; cursor: pointer; }
+        button:hover { background: #1e4db8; }
+        .message { padding: 10px; margin: 10px 0; background: #2a2a2a; border-radius: 5px; }
+        .user { background: #2c64e3; }
+        .admin { background: #28a745; }
+        .error { color: #ff4444; }
+        .success { color: #44ff44; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Тест техподдержки</h1>
+
+        <h2>1. Логин</h2>
+        <input type="text" id="username" placeholder="Username" value="testsupport">
+        <input type="password" id="password" placeholder="Password" value="test123">
+        <button onclick="login()">Войти</button>
+        <div id="loginStatus"></div>
+
+        <h2>2. Отправить сообщение</h2>
+        <textarea id="message" placeholder="Ваше сообщение" rows="4"></textarea>
+        <button onclick="sendMessage()">Отправить</button>
+        <div id="sendStatus"></div>
+
+        <h2>3. История сообщений</h2>
+        <button onclick="loadHistory()">Загрузить историю</button>
+        <div id="history"></div>
+    </div>
+
+    <script>
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const status = document.getElementById('loginStatus');
+
+            try {
+                const res = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ login: username, password: password })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    status.innerHTML = '<span class="success">✅ Успешный вход!</span>';
+                } else {
+                    status.innerHTML = '<span class="error">❌ ' + data.msg + '</span>';
+                }
+            } catch (e) {
+                status.innerHTML = '<span class="error">❌ Ошибка: ' + e.message + '</span>';
+            }
+        }
+
+        async function sendMessage() {
+            const message = document.getElementById('message').value;
+            const status = document.getElementById('sendStatus');
+
+            if (!message.trim()) {
+                status.innerHTML = '<span class="error">❌ Введите сообщение</span>';
+                return;
+            }
+
+            try {
+                const res = await fetch('http://localhost:3000/api/support/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    status.innerHTML = '<span class="success">✅ Сообщение отправлено!</span>';
+                    document.getElementById('message').value = '';
+                    loadHistory();
+                } else {
+                    status.innerHTML = '<span class="error">❌ ' + data.msg + '</span>';
+                }
+            } catch (e) {
+                status.innerHTML = '<span class="error">❌ Ошибка: ' + e.message + '</span>';
+            }
+        }
+
+        async function loadHistory() {
+            const historyDiv = document.getElementById('history');
+
+            try {
+                const res = await fetch('http://localhost:3000/api/support/history', {
+                    credentials: 'include'
+                });
+
+                const messages = await res.json();
+
+                if (messages.length === 0) {
+                    historyDiv.innerHTML = '<p>Нет сообщений</p>';
+                    return;
+                }
+
+                historyDiv.innerHTML = messages.map(msg => {
+                    const time = new Date(msg.time).toLocaleString('ru-RU');
+                    const className = msg.role === 'user' ? 'user' : 'admin';
+                    return `<div class="message ${className}">
+                        <strong>${msg.role === 'user' ? '👤 Вы' : '👨‍💼 Админ'}:</strong> ${msg.text}
+                        <br><small>${time}</small>
+                    </div>`;
+                }).join('');
+
+            } catch (e) {
+                historyDiv.innerHTML = '<span class="error">❌ Ошибка: ' + e.message + '</span>';
+            }
+        }
+    </script>
+</body>
+</html>

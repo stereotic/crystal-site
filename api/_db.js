@@ -29,11 +29,11 @@ let supportMessages = [];
 let premiumMessages = [];
 let sessions = {};
 
-const wallets = [
-  { currency: 'BTC', address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh' },
-  { currency: 'ETH', address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb' },
-  { currency: 'USDT_TRC20', address: 'TXYZopYRdj2D9XRtbG4uTdhUZZ9JdDZsmo' },
-  { currency: 'USDT_BEP20', address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb' }
+let wallets = [
+  { id: 1, currency: 'BTC', address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh' },
+  { id: 2, currency: 'ETH', address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb' },
+  { id: 3, currency: 'USDT_TRC20', address: 'TXYZopYRdj2D9XRtbG4uTdhUZZ9JdDZsmo' },
+  { id: 4, currency: 'USDT_BEP20', address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb' }
 ];
 
 function generateSessionId() {
