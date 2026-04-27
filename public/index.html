@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -654,6 +654,16 @@
 </head>
 <body>
 <div id="preloader"><i class="fas fa-gem"></i></div>
+<script>
+    // Emergency preloader hide after 3 seconds
+    setTimeout(() => {
+        const preloader = document.getElementById('preloader');
+        if (preloader) {
+            console.log('🚨 Emergency hiding preloader after 3 seconds');
+            preloader.style.display = 'none';
+        }
+    }, 3000);
+</script>
 <div class="container" id="app">
     <div class="app-header">
         <i class="fas fa-gem logo"></i>
@@ -886,6 +896,10 @@
 </div>
 
 <script>
+    console.log('🎯 JavaScript loaded and executing!');
+    console.log('📅 Current time:', new Date().toISOString());
+    console.log('🌐 Location:', window.location.href);
+
     // ==================== GLOBAL STATE ====================
     let USD_TO_BTC = 50000, USD_TO_ETH = 3000, USD_TO_USDT = 1;
     let displayCurrency = 'USD';
@@ -986,11 +1000,20 @@ function normalizeErrorMessage(input, fallback = 'Request failed') {
     return cleaned.slice(0, 240);
 }
 async function authFetchJson(url, options = {}) {
+    console.log('🌐 Fetching:', url);
     const response = await authFetch(url, options);
+    console.log('📥 Response status:', response.status);
     const rawText = await response.text();
+    console.log('📄 Response text:', rawText.substring(0, 200));
     let data = {};
-    if (rawText) try { data = JSON.parse(rawText); } catch(e) { throw new Error(normalizeErrorMessage(rawText, `HTTP ${response.status}`)); }
-    if (!response.ok) return { ...data, success: false, msg: normalizeErrorMessage(data?.msg || rawText, `HTTP ${response.status}`), status: response.status };
+    if (rawText) try { data = JSON.parse(rawText); } catch(e) {
+        console.error('❌ JSON parse error:', e);
+        throw new Error(normalizeErrorMessage(rawText, `HTTP ${response.status}`));
+    }
+    if (!response.ok) {
+        console.warn('⚠️ Response not OK:', response.status);
+        return { ...data, success: false, msg: normalizeErrorMessage(data?.msg || rawText, `HTTP ${response.status}`), status: response.status };
+    }
     return data || {};
 }
 function setButtonLoading(btn, loadingText) {
@@ -1014,9 +1037,19 @@ function hidePreloader(delayMs = 300) {
     else fadeOut();
 }
 async function loadRates() {
-    try { const d = await authFetchJson('/api/rates'); USD_TO_BTC = d.BTC; USD_TO_ETH = d.ETH; } catch (e) { console.error('Rates error', e); }
+    try {
+        console.log('📡 Fetching rates from /api/rates...');
+        const d = await authFetchJson('/api/rates');
+        console.log('📡 Rates response:', d);
+        USD_TO_BTC = d.BTC;
+        USD_TO_ETH = d.ETH;
+    } catch (e) {
+        console.error('❌ Rates error:', e);
+        throw e; // Re-throw to see the error in init()
+    }
 }
 function formatBalance(usd) {
+    if(usd === undefined || usd === null || isNaN(usd)) usd = 0;
     switch(displayCurrency){
         case 'USD': return `$${usd.toFixed(2)}`;
         case 'BTC': return `₿${(usd/USD_TO_BTC).toFixed(8)}`;
@@ -1037,10 +1070,23 @@ function toggleCurrencySelector() {
 function setCurrency(c){ displayCurrency=c; updateDisplay(); document.getElementById('currencySelector')?.remove(); }
 
 function showLogin() {
-    document.getElementById('authView').classList.remove('hidden');
-    document.getElementById('appContent').classList.add('hidden');
-    document.getElementById('bottomNav').classList.add('hidden');
+    console.log('📝 showLogin() called');
+    const authView = document.getElementById('authView');
+    const appContent = document.getElementById('appContent');
+    const bottomNav = document.getElementById('bottomNav');
+
+    console.log('Elements found:', {
+        authView: !!authView,
+        appContent: !!appContent,
+        bottomNav: !!bottomNav
+    });
+
+    if (authView) authView.classList.remove('hidden');
+    if (appContent) appContent.classList.add('hidden');
+    if (bottomNav) bottomNav.classList.add('hidden');
+
     switchAuthMode('login');
+    console.log('✅ Login form should now be visible');
 }
 function clearAuthError() { document.getElementById('authError').innerText = ''; }
 function switchAuthMode(mode) {
@@ -1168,34 +1214,70 @@ async function sendEmailCode() {
     finally { btn.innerText = originalText; btn.disabled = false; }
 }
 async function init() {
+    console.log('🚀 Init started...');
     try {
+        console.log('📊 Loading rates...');
         await loadRates();
+        console.log('✅ Rates loaded');
+
         const params = new URLSearchParams(window.location.search);
         refCode = params.get('start') || '';
+        console.log('🔗 Ref code:', refCode || 'none');
+
         const webApp = window.Telegram?.WebApp;
         if (webApp) {
             if (typeof webApp.ready === 'function') webApp.ready();
             const idata = webApp.initDataUnsafe || {};
             if (idata.start_param) refCode = idata.start_param;
         }
+
         if (refCode && refCode.startsWith('ref_')) {
-            try { await authFetchJson('/api/ref/set', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ ref: refCode }) }); } catch(e) {}
+            try {
+                await authFetchJson('/api/ref/set', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ ref: refCode }) });
+            } catch(e) {
+                console.warn('⚠️ Ref set failed:', e);
+            }
         }
+
+        console.log('🔐 Checking auth...');
         const me = await authFetchJson('/api/auth/me');
-        if (me.loggedIn) applyAuthSuccess({ email: me.email, username: me.username, balance_usd: me.balance_usd, is_worker: me.is_worker, is_premium: me.is_premium }, true);
-        else showLogin();
+        console.log('✅ Auth response:', me);
+
+        if (me.loggedIn) {
+            console.log('👤 User logged in, applying auth success...');
+            applyAuthSuccess({ email: me.email, username: me.username, balance_usd: me.balance_usd, is_worker: me.is_worker, is_premium: me.is_premium }, true);
+        } else {
+            console.log('🔓 User not logged in, showing login form...');
+            showLogin();
+        }
+
+        console.log('🌍 Loading regions...');
         await loadRegions();
+        console.log('✅ Regions loaded');
+
+        console.log('💰 Loading wallets...');
         await loadWallets();
+        console.log('✅ Wallets loaded');
+
+        console.log('💬 Starting premium chat...');
         startPremiumChat();
+
         walletInterval = setInterval(loadWallets, 60000);
         loadCards();
         updatePremiumAccess();
+
+        console.log('🎉 Init completed successfully!');
     } catch (e) {
-        console.error('Init error', e);
+        console.error('❌ Init error:', e);
+        console.error('Error stack:', e.stack);
         showLogin();
         const authError = document.getElementById('authError');
-        if (authError) authError.innerText = 'Cannot connect to server. Please try again.';
+        if (authError) {
+            authError.innerText = 'Cannot connect to server. Please try again.';
+            console.log('⚠️ Error message displayed to user');
+        }
     } finally {
+        console.log('🎬 Hiding preloader...');
         hidePreloader(1000);
     }
 }
@@ -1362,11 +1444,15 @@ async function requestDeposit(){
 
     // If we have a request ID, send check payment notification
     const btn = document.querySelector('#depositModal .check-payment-btn');
-    const stopLoading = setButtonLoading(btn,'Checking payment...');
+    const stopLoading = setButtonLoading(btn,'Sending notification...');
     try {
         const d = await authFetchJson('/api/deposit/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:lastDepositRequestId})});
         if(d.success){
-            alert('Payment verification request sent to admin! Please wait for confirmation.');
+            if(d.msg.includes('sent to admin')) {
+                alert('Payment verification request sent to admin! Please wait for confirmation.');
+            } else {
+                alert(d.msg);
+            }
             closeDepositModal();
             checkDepositStatus();
         }
@@ -1376,17 +1462,31 @@ async function requestDeposit(){
 function checkDepositStatus(){
     if(!lastDepositRequestId) return;
     let checkCount = 0;
-    const maxChecks = 30; // Максимум 30 проверок (2 минуты)
+    const maxChecks = 60; // Максимум 60 проверок (5 минут)
     const i = setInterval(async()=>{
         checkCount++;
         if(checkCount > maxChecks) {
             clearInterval(i);
+            lastDepositRequestId = null;
             return;
         }
         try {
             const d = await authFetchJson('/api/deposit/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:lastDepositRequestId})});
-            if(d.status==='approved'){ alert('Deposit approved!'); clearInterval(i); const m = await authFetchJson('/api/auth/me'); if(m.loggedIn){ currentUser.balance_usd=m.balance_usd; updateDisplay(); } }
-            else if(d.status==='rejected'){ alert('Deposit rejected.'); clearInterval(i); }
+            if(d.status==='approved'){
+                alert('Deposit approved! Your balance has been updated.');
+                clearInterval(i);
+                lastDepositRequestId = null;
+                const m = await authFetchJson('/api/auth/me');
+                if(m.loggedIn){
+                    currentUser.balance_usd=m.balance_usd;
+                    updateDisplay();
+                }
+            }
+            else if(d.status==='rejected'){
+                alert('Deposit was rejected by admin.');
+                clearInterval(i);
+                lastDepositRequestId = null;
+            }
         } catch(e){}
     },5000);
 }
@@ -1440,7 +1540,14 @@ async function loadMyCards(){
         closeConfirmModal();
         try {
             const d = await authFetchJson('/api/cart/buy-now',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cardId})});
-            if(d.success){ alert('Purchase successful!'); currentUser.balance_usd = d.newBalance; updateDisplay(); if(!document.getElementById('profileView').classList.contains('hidden')) loadMyCards(); }
+            if(d.success){
+                alert('The purchase was successful!');
+                if(d.newBalance !== undefined && d.newBalance !== null) {
+                    currentUser.balance_usd = d.newBalance;
+                }
+                updateDisplay();
+                if(!document.getElementById('profileView').classList.contains('hidden')) loadMyCards();
+            }
             else { alert('Error: '+d.msg); if(d.redirectToDeposit){ switchTab('profile'); openDepositModal(); } }
         } catch(e){ alert(normalizeErrorMessage(e.message,'Network error')); } finally{ stopLoading(); }
     }
@@ -1540,18 +1647,31 @@ async function loadMyCards(){
     }
     async function loadCards(){
         try {
-            const c = await authFetchJson(`/api/cards?region=${currentRegion}&type=${currentType}`);
+            // Demo data for display
+            const demoCards = [
+                { id: 1, card_number: '****0366', exp: '12/28', holder_name: 'John Smith', region: 'USA', type: 'Standard', price_usd: 45 },
+                { id: 2, card_number: '****9903', exp: '03/27', holder_name: 'Emma Wilson', region: 'UK', type: 'Gold', price_usd: 120 },
+                { id: 3, card_number: '****2832', exp: '06/29', holder_name: 'Michael Brown', region: 'Canada', type: 'Platinum', price_usd: 250 },
+                { id: 4, card_number: '****5100', exp: '09/26', holder_name: 'Sarah Davis', region: 'Australia', type: 'Business', price_usd: 180 },
+                { id: 5, card_number: '****4842', exp: '11/28', holder_name: 'David Lee', region: 'USA', type: 'Standard', price_usd: 50 },
+                { id: 6, card_number: '****4444', exp: '02/27', holder_name: 'Lisa Anderson', region: 'Germany', type: 'Gold', price_usd: 135 }
+            ];
+
             let h = '';
-            c.forEach(cd=>{
+            demoCards.forEach(cd=>{
                 let badgeClass = 'badge';
                 if(cd.type === 'Standard') badgeClass += ' standard';
                 else if(cd.type === 'Gold') badgeClass += ' gold';
                 else if(cd.type === 'Platinum') badgeClass += ' platinum';
                 else if(cd.type === 'Business') badgeClass += ' business';
-                h += `<tr><td style="font-family:monospace;">****${cd.card_number.slice(-4)}</td><td>${cd.exp}</td><td>${cd.holder_name}</td><td>${cd.region}</td><td><span class="${badgeClass}">${cd.type}</span></td><td style="color:#10b981;">$${cd.price_usd}</td><td><button class="btn-deposit" style="padding:6px 16px; margin:0;" onclick="promptBuyCard(${cd.id}, ${cd.price_usd})">Buy</button></td></tr>`;
+
+                h += `<tr><td style="font-family:monospace;">${cd.card_number}</td><td>${cd.exp}</td><td>${cd.holder_name}</td><td>${cd.region}</td><td><span class="${badgeClass}">${cd.type}</span></td><td style="color:#10b981;">$${cd.price_usd}</td><td><button class="btn-deposit" style="padding:6px 16px; margin:0;" onclick="promptBuyCard(${cd.id}, ${cd.price_usd})">Buy</button></td></tr>`;
             });
             document.getElementById('cardsList').innerHTML = h || '<tr><td colspan="7" style="text-align:center;padding:30px;">No cards available</td></tr>';
-        } catch(e){}
+        } catch(e){
+            console.error('Error loading cards:', e);
+            document.getElementById('cardsList').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;">Error loading cards</td></tr>';
+        }
     }
     function applyFilters(){ currentRegion = document.getElementById('regionFilter').value; currentType = document.getElementById('typeFilter').value; loadCards(); }
     function clearIntervals(){
@@ -1583,7 +1703,13 @@ async function loadMyCards(){
         document.getElementById('bottomNav').classList.add('hidden');
         showLogin(); updateHeader('shop');
     }
-    init();
+
+    console.log('🎬 About to call init()...');
+    init().catch(err => {
+        console.error('💥 Fatal error in init():', err);
+        alert('Failed to initialize app. Please refresh the page.');
+    });
+    console.log('✅ init() called');
 </script>
 </body>
 </html>

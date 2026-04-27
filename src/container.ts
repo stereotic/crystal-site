@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { container } from 'tsyringe';
 import { DatabaseConnection, UserRepository, CardRepository, SupportRepository } from './infrastructure/database';
 import { IUserRepository, ICardRepository, ISupportRepository } from './domain/repositories';
-import { TelegramSupportBot } from './infrastructure/telegram';
+import { TelegramUnifiedBot } from './infrastructure/telegram';
 
 // Register database connection
 container.registerSingleton(DatabaseConnection);
@@ -21,6 +21,6 @@ container.register<ISupportRepository>('ISupportRepository', {
 });
 
 // Register Telegram bot
-container.registerSingleton(TelegramSupportBot);
+container.registerSingleton(TelegramUnifiedBot);
 
 export { container };

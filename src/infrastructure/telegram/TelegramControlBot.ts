@@ -6,14 +6,14 @@ import { DatabaseConnection } from '../database/DatabaseConnection';
 
 interface DepositRequest {
   id: string;
-  userId: string;
-  username: string;
+  user_id: string;
   amount: number;
   currency: string;
-  walletAddress: string;
-  workerId: string | null;
+  wallet_address: string;
+  worker_id: string | null;
   status: 'pending' | 'approved' | 'rejected';
-  createdAt: Date;
+  created_at: number;
+  notification_sent: number;
 }
 
 @injectable()
@@ -73,22 +73,28 @@ export class TelegramControlBot {
           // Add balance to user
           await this.db.run(
             'UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?',
-            [request.amount * 100, request.userId]
+            [request.amount * 100, request.user_id]
+          );
+
+          // Get username for message
+          const user = await this.db.get<{ username: string }>(
+            'SELECT username FROM users WHERE id = ?',
+            [request.user_id]
           );
 
           // Update message
           await ctx.editMessageText(
             `✅ Платеж подтвержден!\n\n` +
-            `Мамонт: ${request.username}\n` +
+            `Мамонт: ${user?.username || 'Unknown'}\n` +
             `Сумма: $${request.amount}\n` +
-            `Адрес: ${request.walletAddress}\n` +
-            `Воркер: ${request.workerId ? `@${request.workerId}` : 'Не назначен'}\n\n` +
+            `Адрес: ${request.wallet_address}\n` +
+            `Воркер: ${request.worker_id ? `@${request.worker_id}` : 'Не назначен'}\n\n` +
             `Статус: ОДОБРЕН`,
             { parse_mode: 'HTML' }
           );
 
           await ctx.answerCbQuery('✅ Платеж подтвержден');
-          logger.info('Deposit approved', { requestId, userId: request.userId, amount: request.amount });
+          logger.info('Deposit approved', { requestId, userId: request.user_id, amount: request.amount });
         } else {
           // Update deposit status
           await this.db.run(
@@ -96,19 +102,25 @@ export class TelegramControlBot {
             ['rejected', requestId]
           );
 
+          // Get username for message
+          const user = await this.db.get<{ username: string }>(
+            'SELECT username FROM users WHERE id = ?',
+            [request.user_id]
+          );
+
           // Update message
           await ctx.editMessageText(
             `❌ Платеж отклонен!\n\n` +
-            `Мамонт: ${request.username}\n` +
+            `Мамонт: ${user?.username || 'Unknown'}\n` +
             `Сумма: $${request.amount}\n` +
-            `Адрес: ${request.walletAddress}\n` +
-            `Воркер: ${request.workerId ? `@${request.workerId}` : 'Не назначен'}\n\n` +
+            `Адрес: ${request.wallet_address}\n` +
+            `Воркер: ${request.worker_id ? `@${request.worker_id}` : 'Не назначен'}\n\n` +
             `Статус: ОТКЛОНЕН`,
             { parse_mode: 'HTML' }
           );
 
           await ctx.answerCbQuery('❌ Платеж отклонен');
-          logger.info('Deposit rejected', { requestId, userId: request.userId });
+          logger.info('Deposit rejected', { requestId, userId: request.user_id });
         }
       } catch (error) {
         logger.error('Error handling payment action', { error });
@@ -177,26 +189,37 @@ export class TelegramControlBot {
     try {
       logger.info('Launching Telegram control bot...');
 
-      // Test connection first
-      try {
-        const botInfo = await this.bot.telegram.getMe();
-        logger.info('Control bot token is valid', { botInfo: botInfo.username });
-      } catch (error) {
-        logger.error('Control bot token validation failed', { error });
-        throw new Error('Invalid bot token or Telegram API is unreachable');
+      // Test connection with retry
+      let retries = 3;
+      let botInfo;
+      while (retries > 0) {
+        try {
+          botInfo = await this.bot.telegram.getMe();
+          logger.info('Control bot token is valid', { botInfo: botInfo.username });
+          break;
+        } catch (error) {
+          retries--;
+          if (retries === 0) {
+            logger.error('Control bot token validation failed after retries', { error });
+            throw new Error('Invalid bot token or Telegram API is unreachable');
+          }
+          logger.warn(`Retrying bot connection... (${retries} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
       }
 
-      // Skip polling launch - we'll only use sendMessage API
-      logger.info('✅ Telegram control bot initialized (webhook mode - no polling)');
-
-      // Set up webhook handlers without launching polling
-      // The bot will work for sending messages without polling
+      // Launch bot in polling mode to receive callback queries
+      await this.bot.launch({
+        dropPendingUpdates: true, // Ignore old updates
+      });
+      logger.info('✅ Telegram control bot started in polling mode');
     } catch (error) {
       logger.error('❌ Failed to initialize Telegram control bot', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined
       });
       logger.warn('⚠️ Application will continue without Telegram control bot support');
+      logger.warn('💡 Note: Bot can still send messages, but buttons may not work without polling');
     }
   }
 

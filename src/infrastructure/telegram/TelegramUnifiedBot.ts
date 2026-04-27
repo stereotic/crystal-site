@@ -1,8 +1,16 @@
-import { Telegraf, Markup, Context } from 'telegraf';
+import { Telegraf, Markup, Context, session } from 'telegraf';
 import { inject, injectable } from 'tsyringe';
 import { configService } from '../../../config';
 import { logger } from '../logger';
 import { DatabaseConnection } from '../database/DatabaseConnection';
+
+interface SessionData {
+  replyTo?: string;
+}
+
+interface BotContext extends Context {
+  session?: SessionData;
+}
 
 interface DepositRequest {
   id: string;
@@ -18,9 +26,10 @@ interface DepositRequest {
 
 @injectable()
 export class TelegramUnifiedBot {
-  private bot: Telegraf;
+  private bot: Telegraf<BotContext>;
   private controlChatId: string;
   private adminIds: string[];
+  private replyMode: Map<string, string> = new Map(); // adminId -> targetUsername
 
   constructor(
     @inject(DatabaseConnection) private db: DatabaseConnection
@@ -38,6 +47,7 @@ export class TelegramUnifiedBot {
     });
 
     this.bot = new Telegraf(botToken);
+    this.bot.use(session());
     this.setupHandlers();
   }
 
@@ -76,10 +86,29 @@ export class TelegramUnifiedBot {
           );
 
           // Add balance to user
+          logger.info('Updating user balance', {
+            userId: request.user_id,
+            username: request.username,
+            amountCents: request.amount * 100,
+            sql: 'UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?'
+          });
+
           await this.db.run(
             'UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?',
             [request.amount * 100, request.user_id]
           );
+
+          // Verify the update
+          const updatedUser = await this.db.get<{ id: string; username: string; balance_cents: number }>(
+            'SELECT id, username, balance_cents FROM users WHERE id = ?',
+            [request.user_id]
+          );
+
+          logger.info('Balance updated successfully', {
+            userId: updatedUser?.id,
+            username: updatedUser?.username,
+            newBalanceCents: updatedUser?.balance_cents
+          });
 
           // Update message
           await ctx.editMessageText(
@@ -121,9 +150,117 @@ export class TelegramUnifiedBot {
       }
     });
 
+    // ==================== PREMIUM CHAT HANDLERS ====================
+
+    // Handle /reply command for premium messages
+    this.bot.command('reply', async (ctx) => {
+      try {
+        // Extract message after /reply command
+        const text = ctx.message.text;
+        const replyMessage = text.replace('/reply', '').trim();
+
+        if (!replyMessage) {
+          await ctx.reply('❌ Использование: /reply <ваше сообщение>');
+          return;
+        }
+
+        logger.info('Admin reply via command', { message: replyMessage });
+
+        // Save admin reply to database
+        await this.db.run(
+          'INSERT INTO premium_messages (user_id, username, message, time) VALUES (?, ?, ?, ?)',
+          [0, 'Admin', replyMessage, new Date().toISOString()]
+        );
+
+        await ctx.reply('✅ Ваш ответ отправлен в премиум чат');
+        logger.info('Admin reply sent to premium chat', { message: replyMessage });
+      } catch (error) {
+        logger.error('Error handling admin reply command', { error });
+        await ctx.reply('❌ Ошибка при отправке сообщения');
+      }
+    });
+
+    // ==================== PREMIUM CHAT HANDLERS ====================
+
+    // Handle inline button for premium chat replies
+    this.bot.action(/^reply_premium_(.+)$/, async (ctx) => {
+      try {
+        const targetUserId = ctx.match[1];
+        const adminId = ctx.from.id.toString();
+
+        logger.info('Admin clicked reply button for premium chat', { adminId, targetUserId });
+
+        // Set reply mode
+        this.replyMode.set(adminId, `premium_${targetUserId}`);
+
+        await ctx.answerCbQuery('✅ Режим ответа активирован');
+        await ctx.reply(
+          `✏️ Режим ответа активирован для пользователя (ID: ${targetUserId})\n\n` +
+          `Отправьте ваше сообщение, и оно будет доставлено в премиум чат.`
+        );
+      } catch (error) {
+        logger.error('Error handling premium reply button', { error });
+        await ctx.answerCbQuery('❌ Ошибка');
+      }
+    });
+
+    // Handle close button for premium chat
+    this.bot.action(/^close_premium_(.+)$/, async (ctx) => {
+      try {
+        const userId = ctx.from.id.toString();
+
+        // Clear reply mode if active
+        this.replyMode.delete(userId);
+
+        await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+        await ctx.answerCbQuery('✅ Диалог закрыт');
+      } catch (error) {
+        logger.error('Error handling premium close button', { error });
+        await ctx.answerCbQuery('❌ Ошибка');
+      }
+    });
+
+    // Handle inline button for support chat replies
+    this.bot.action(/^reply_support_(.+)$/, async (ctx) => {
+      try {
+        const targetUserEmail = ctx.match[1];
+        const adminId = ctx.from.id.toString();
+
+        logger.info('Admin clicked reply button for support', { adminId, targetUserEmail });
+
+        // Set reply mode
+        this.replyMode.set(adminId, `support_${targetUserEmail}`);
+
+        await ctx.answerCbQuery('✅ Режим ответа активирован');
+        await ctx.reply(
+          `✏️ Режим ответа активирован для пользователя: ${targetUserEmail}\n\n` +
+          `Отправьте ваше сообщение, и оно будет доставлено в техподдержку.`
+        );
+      } catch (error) {
+        logger.error('Error handling support reply button', { error });
+        await ctx.answerCbQuery('❌ Ошибка');
+      }
+    });
+
+    // Handle close button for support chat
+    this.bot.action(/^close_support_(.+)$/, async (ctx) => {
+      try {
+        const adminId = ctx.from.id.toString();
+
+        // Clear reply mode if active
+        this.replyMode.delete(adminId);
+
+        await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+        await ctx.answerCbQuery('✅ Диалог закрыт');
+      } catch (error) {
+        logger.error('Error handling support close button', { error });
+        await ctx.answerCbQuery('❌ Ошибка');
+      }
+    });
+
     // ==================== SUPPORT CHAT HANDLERS ====================
 
-    // Handle text messages (support chat)
+    // Handle text messages (support chat and admin replies)
     this.bot.on('text', async (ctx) => {
       const userId = ctx.from.id.toString();
       const username = ctx.from.username || ctx.from.first_name || 'Unknown';
@@ -131,17 +268,50 @@ export class TelegramUnifiedBot {
 
       // Check if message is from admin
       if (this.adminIds.includes(userId)) {
-        // Admin message - handle as reply to user
-        if (ctx.message.reply_to_message) {
-          // This is a reply to a user message
-          // Extract user ID from the original message or database
-          logger.info('Admin reply received', { adminId: userId, text });
-          // TODO: Implement admin reply logic
+        // Check if admin is in reply mode
+        const replyTarget = this.replyMode.get(userId);
+
+        if (replyTarget) {
+          try {
+            // Check if replying to premium chat or support
+            if (replyTarget.startsWith('premium_')) {
+              const targetUserId = replyTarget.replace('premium_', '');
+
+              // Save admin reply to premium_messages with target user_id (keep as string for UUID support)
+              await this.db.run(
+                'INSERT INTO premium_messages (user_id, username, message, time) VALUES (?, ?, ?, ?)',
+                [targetUserId, 'Admin', text, new Date().toISOString()]
+              );
+
+              await ctx.reply('✅ Ваш ответ отправлен в премиум чат');
+              logger.info('Admin reply sent to premium chat', { targetUserId, message: text });
+            } else if (replyTarget.startsWith('support_')) {
+              const targetUserEmail = replyTarget.replace('support_', '');
+
+              // Save admin reply to messages table
+              await this.db.run(
+                'INSERT INTO messages (user_email, role, text, time) VALUES (?, ?, ?, ?)',
+                [targetUserEmail, 'admin', text, Date.now()]
+              );
+
+              await ctx.reply('✅ Ваш ответ отправлен в техподдержку');
+              logger.info('Admin reply sent to support', { targetUserEmail, message: text });
+            }
+
+            // Clear reply mode
+            this.replyMode.delete(userId);
+          } catch (error) {
+            logger.error('Error sending admin reply', { error });
+            await ctx.reply('❌ Ошибка при отправке сообщения');
+          }
+          return;
         }
+
+        // Admin message without reply mode - ignore
         return;
       }
 
-      // Regular user message - save to database
+      // Regular user message - save to support_messages
       try {
         await this.db.run(
           `INSERT INTO support_messages (user_id, username, message, timestamp, is_admin)
@@ -149,11 +319,22 @@ export class TelegramUnifiedBot {
           [userId, username, text, Date.now(), 0]
         );
 
-        // Forward to admin chat
-        await this.bot.telegram.sendMessage(
-          this.controlChatId,
-          `💬 Новое сообщение от ${username} (ID: ${userId}):\n\n${text}`
-        );
+        // Send notification with inline buttons to all admins
+        const notificationText = `💬 Новое сообщение в техподдержку\n\n` +
+          `👤 От: ${username} (ID: ${userId})\n` +
+          `💬 Сообщение: ${text}`;
+
+        const keyboard = Markup.inlineKeyboard([
+          [
+            Markup.button.callback('💬 Ответить', `reply_support_${userId}`),
+            Markup.button.callback('❌ Закрыть', `close_support_${userId}`)
+          ]
+        ]);
+
+        // Send to all admins
+        for (const adminId of this.adminIds) {
+          await this.bot.telegram.sendMessage(adminId, notificationText, keyboard);
+        }
 
         await ctx.reply('✅ Ваше сообщение отправлено в поддержку. Мы ответим в ближайшее время.');
         logger.info('Support message received', { userId, username });
@@ -255,6 +436,11 @@ export class TelegramUnifiedBot {
       await this.bot.launch({
         dropPendingUpdates: true, // Ignore old updates
       });
+
+      // Handle graceful shutdown
+      process.once('SIGINT', () => this.bot.stop('SIGINT'));
+      process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
+
       logger.info('✅ Unified Telegram Bot started in polling mode');
       logger.info('📱 Bot handles: deposit approvals + support chat');
     } catch (error) {
@@ -268,7 +454,65 @@ export class TelegramUnifiedBot {
   }
 
   public stop(): void {
-    this.bot.stop();
-    logger.info('Unified Telegram Bot stopped');
+    try {
+      this.bot.stop();
+      logger.info('Unified Telegram Bot stopped');
+    } catch (error) {
+      logger.error('Error stopping bot', { error });
+    }
+  }
+
+  // Notify about premium chat message
+  public async notifyPremiumMessage(userId: string | number, username: string, message: string): Promise<void> {
+    try {
+      const text = `⭐ ПРЕМИУМ чат\n\n` +
+        `👤 User: ${username}\n` +
+        `💬 Message: ${message}`;
+
+      const keyboard = Markup.inlineKeyboard([
+        [
+          Markup.button.callback('💬 Ответить', `reply_premium_${userId}`),
+          Markup.button.callback('❌ Закрыть', `close_premium_${userId}`)
+        ]
+      ]);
+
+      // Send to all admins
+      for (const adminId of this.adminIds) {
+        await this.bot.telegram.sendMessage(adminId, text, keyboard);
+      }
+
+      logger.info('Premium message notification sent to Telegram', { userId, username });
+    } catch (error) {
+      logger.error('Failed to send premium message notification', { error });
+      throw error;
+    }
+  }
+
+  // Send message to admin (for support messages from website)
+  public async sendMessageToAdmin(userEmail: string, message: string, adminId: string, chatType: 'support' | 'premium' = 'support'): Promise<void> {
+    try {
+      const chatTypeLabel = chatType === 'premium' ? '⭐ ПРЕМИУМ' : '💬 Поддержка';
+      const text = `📨 Новое сообщение в ${chatTypeLabel}!\n\n` +
+        `👤 От: ${userEmail}\n` +
+        `🕐 ${new Date().toLocaleString('ru-RU')}\n\n` +
+        `💬 ${message}`;
+
+      const keyboard = Markup.inlineKeyboard([
+        [
+          Markup.button.callback('💬 Ответить', `reply_${chatType}_${userEmail}`),
+          Markup.button.callback('❌ Закрыть', `close_${chatType}_${userEmail}`)
+        ]
+      ]);
+
+      // Send to all admins
+      for (const adminId of this.adminIds) {
+        await this.bot.telegram.sendMessage(adminId, text, keyboard);
+      }
+
+      logger.info('Message sent to admin successfully', { userEmail, chatType });
+    } catch (error) {
+      logger.error('Failed to send message to admin', { error, userEmail });
+      throw error;
+    }
   }
 }

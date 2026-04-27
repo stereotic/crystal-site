@@ -1,7 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { ISupportRepository } from '../../domain/repositories';
 import { SendSupportMessageDTO } from '../dtos';
-import { TelegramSupportBot } from '../../infrastructure/telegram';
+import { TelegramUnifiedBot } from '../../infrastructure/telegram/TelegramUnifiedBot';
 import { configService } from '../../../config';
 import { logger } from '../../infrastructure/logger';
 
@@ -9,7 +9,7 @@ import { logger } from '../../infrastructure/logger';
 export class SendSupportMessageUseCase {
   constructor(
     @inject('ISupportRepository') private supportRepository: ISupportRepository,
-    @inject(TelegramSupportBot) private telegramBot: TelegramSupportBot
+    @inject(TelegramUnifiedBot) private telegramBot: TelegramUnifiedBot
   ) {}
 
   async execute(dto: SendSupportMessageDTO): Promise<void> {
@@ -49,10 +49,12 @@ export class SendSupportMessageUseCase {
       }
 
       try {
-        await this.telegramBot.sendMessageToAdmin(dto.userEmail, dto.message, adminId);
+        const chatType = (dto as any).chatType || 'support'; // Default to 'support' if not specified
+        await this.telegramBot.sendMessageToAdmin(dto.userEmail, dto.message, adminId, chatType);
         logger.info('Support message sent to Telegram successfully', {
           userEmail: dto.userEmail,
           adminId,
+          chatType,
           messagePreview: dto.message.substring(0, 50)
         });
       } catch (error) {

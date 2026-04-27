@@ -9,25 +9,25 @@ export class GetAvailableCardsUseCase {
     @inject('ICardRepository') private cardRepository: ICardRepository
   ) {}
 
-  async execute(filters?: CardFilterDTO): Promise<CardResponseDTO[]> {
+  async execute(filters?: CardFilterDTO): Promise<any[]> {
     const cards = await this.cardRepository.findAvailable(filters);
     return cards.map(this.mapToDTO);
   }
 
-  private mapToDTO(card: Card): CardResponseDTO {
+  private mapToDTO(card: Card): any {
     return {
       id: card.getId(),
       region: card.getRegion(),
       type: card.getType(),
-      cardNumber: card.getMaskedCardNumber(),
+      card_number: card.getCardNumber(), // Use full card number, not masked
       exp: card.getExp(),
-      holderName: card.getHolderName(),
+      holder_name: card.getHolderName(),
       bank: card.getBank(),
       bin: card.getBin(),
-      priceUsd: card.getPrice().getDollars(),
-      isNonVbv: card.isNonVbv(),
-      isFullz: card.isFullz(),
-      isRefundable: card.isRefundable(),
+      price_usd: card.getPrice().getDollars(),
+      non_vbv: card.isNonVbv(),
+      fullz: card.isFullz(),
+      refundable: card.isRefundable(),
     };
   }
 }

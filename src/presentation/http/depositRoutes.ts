@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { container } from '../../container';
 import { requireAuth } from '../middleware/auth';
 import { DatabaseConnection } from '../../infrastructure/database/DatabaseConnection';
-import { TelegramControlBot } from '../../infrastructure/telegram';
+import { TelegramUnifiedBot } from '../../infrastructure/telegram';
 import { logger } from '../../infrastructure/logger';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -128,6 +128,7 @@ router.post('/check', requireAuth, async (req: Request, res: Response, next: Nex
       currency: string;
       wallet_address: string;
       status: string;
+      notification_sent: number;
     }>(
       'SELECT * FROM deposit_requests WHERE id = ? AND user_id = ?',
       [requestId, userId]
@@ -137,6 +138,16 @@ router.post('/check', requireAuth, async (req: Request, res: Response, next: Nex
       res.status(404).json({
         success: false,
         msg: 'Deposit request not found'
+      });
+      return;
+    }
+
+    // If already processed, return current status
+    if (request.status !== 'pending') {
+      res.json({
+        success: true,
+        status: request.status,
+        msg: request.status === 'approved' ? 'Payment approved' : 'Payment rejected'
       });
       return;
     }
@@ -155,33 +166,48 @@ router.post('/check', requireAuth, async (req: Request, res: Response, next: Nex
       return;
     }
 
-    // Send notification to control bot
-    try {
-      const controlBot = container.resolve(TelegramControlBot);
-      await controlBot.sendPaymentNotification(
-        request.id,
-        user.username,
-        request.amount,
-        request.wallet_address,
-        user.worker_id
-      );
+    // Send notification to unified bot ONLY if not sent before
+    if (!request.notification_sent) {
+      try {
+        const unifiedBot = container.resolve(TelegramUnifiedBot);
+        await unifiedBot.sendPaymentNotification(
+          request.id,
+          user.username,
+          request.amount,
+          request.wallet_address,
+          user.worker_id
+        );
 
-      logger.info('Payment notification sent', {
-        requestId: request.id,
-        username: user.username,
-        amount: request.amount
-      });
+        // Mark notification as sent
+        await db.run(
+          'UPDATE deposit_requests SET notification_sent = 1 WHERE id = ?',
+          [requestId]
+        );
 
+        logger.info('Payment notification sent', {
+          requestId: request.id,
+          username: user.username,
+          amount: request.amount
+        });
+
+        res.json({
+          success: true,
+          status: request.status,
+          msg: 'Payment verification request sent to admin'
+        });
+      } catch (error) {
+        logger.error('Failed to send payment notification', { error });
+        res.status(500).json({
+          success: false,
+          msg: 'Failed to send notification to admin'
+        });
+      }
+    } else {
+      // Notification already sent, just return status
       res.json({
         success: true,
         status: request.status,
-        msg: 'Payment verification request sent'
-      });
-    } catch (error) {
-      logger.error('Failed to send payment notification', { error });
-      res.status(500).json({
-        success: false,
-        msg: 'Failed to send notification to admin'
+        msg: 'Waiting for admin confirmation'
       });
     }
   } catch (error) {

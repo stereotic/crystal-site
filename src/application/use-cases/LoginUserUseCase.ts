@@ -12,19 +12,40 @@ export class LoginUserUseCase {
   ) {}
 
   async execute(dto: LoginUserDTO): Promise<UserResponseDTO> {
-    // Try to parse as email first
     let user: User | null = null;
 
-    try {
-      const email = Email.create(dto.login);
-      user = await this.userRepository.findByEmail(email);
-    } catch {
-      // Not an email, try username
+    // Check if login contains @ - likely an email
+    if (dto.login.includes('@')) {
       try {
+        const email = Email.create(dto.login);
+        user = await this.userRepository.findByEmail(email);
+      } catch (error) {
+        // Invalid email format, will try username next
+      }
+    }
+
+    // If not found by email, try username (without strict validation)
+    if (!user) {
+      try {
+        // Try to find user directly without strict validation
         const username = Username.create(dto.login);
         user = await this.userRepository.findByUsername(username);
-      } catch {
-        throw new ValidationError('Invalid login format');
+      } catch (error) {
+        // If Username.create fails, try direct database lookup
+        // This handles cases where username doesn't match strict validation
+        const db = await import('../../infrastructure/database/DatabaseConnection');
+        const dbConn = (await import('../../container')).container.resolve(db.DatabaseConnection);
+        const users = await dbConn.query<any>(
+          'SELECT * FROM users WHERE username = ? COLLATE NOCASE',
+          [dto.login]
+        );
+
+        if (users.length > 0) {
+          // Reconstruct user from database
+          const userRepo = await import('../../infrastructure/database/UserRepository');
+          const repo = new userRepo.UserRepository(dbConn);
+          user = await repo.findById(users[0].id);
+        }
       }
     }
 

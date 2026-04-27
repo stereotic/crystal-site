@@ -3,6 +3,7 @@ export interface SendSupportMessageDTO {
   message: string;
   fileId?: string;
   fileType?: string;
+  chatType?: 'support' | 'premium';
 }
 
 export interface SupportMessageResponseDTO {

@@ -51,7 +51,10 @@ export class CardRepository implements ICardRepository {
 
   async findAvailable(filters?: CardFilters): Promise<Card[]> {
     const { sql, params } = this.buildQuery(filters, true);
+    console.log('[CardRepository] SQL:', sql);
+    console.log('[CardRepository] Params:', params);
     const rows = await this.db.query<CardRow>(sql, params);
+    console.log('[CardRepository] Rows returned:', rows.length);
     return rows.map(row => this.mapToDomain(row));
   }
 
@@ -139,12 +142,12 @@ export class CardRepository implements ICardRepository {
       conditions.push('is_active = 1');
     }
 
-    if (filters?.region) {
+    if (filters?.region && filters.region !== 'all') {
       conditions.push('region = ?');
       params.push(filters.region);
     }
 
-    if (filters?.type) {
+    if (filters?.type && filters.type !== 'all') {
       conditions.push('type = ?');
       params.push(filters.type);
     }
