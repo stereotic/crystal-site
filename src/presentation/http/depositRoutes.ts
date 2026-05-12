@@ -16,6 +16,7 @@ router.get('/wallets', async (req: Request, res: Response, next: NextFunction): 
       'SELECT id, currency, address FROM wallets'
     );
 
+    logger.info('💰 Wallets fetched from DB', { wallets });
     res.json(wallets);
   } catch (error) {
     logger.error('Error fetching wallets', { error });

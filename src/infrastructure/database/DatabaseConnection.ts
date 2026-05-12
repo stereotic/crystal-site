@@ -1,15 +1,44 @@
+import { Pool } from 'pg';
 import { Database } from 'sqlite3';
 import { injectable } from 'tsyringe';
+
+type DBType = 'sqlite' | 'postgres';
 
 @injectable()
 export class DatabaseConnection {
   private db: Database | null = null;
+  private pool: Pool | null = null;
+  private dbType: DBType;
 
   constructor() {
+    // Определяем тип БД по наличию DATABASE_URL
+    this.dbType = process.env.DATABASE_URL ? 'postgres' : 'sqlite';
     this.connect();
   }
 
   private connect(): void {
+    if (this.dbType === 'postgres') {
+      this.connectPostgres();
+    } else {
+      this.connectSQLite();
+    }
+  }
+
+  private connectPostgres(): void {
+    this.pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    });
+
+    this.pool.on('error', (err) => {
+      console.error('PostgreSQL pool error:', err);
+    });
+
+    console.log('✓ Connected to PostgreSQL');
+    this.runMigrations();
+  }
+
+  private connectSQLite(): void {
     this.db = new Database('./database.db', (err) => {
       if (err) {
         console.error('Database connection error:', err);
@@ -36,10 +65,7 @@ export class DatabaseConnection {
       }
     });
 
-    // Create indexes for better performance
     this.createIndexes();
-
-    // Run migrations after indexes are created
     setTimeout(() => this.runMigrations(), 100);
   }
 
@@ -55,7 +81,6 @@ export class DatabaseConnection {
   private createIndexes(): void {
     if (!this.db) return;
 
-    // First ensure is_sold column exists
     this.db.run('ALTER TABLE cards ADD COLUMN is_sold INTEGER DEFAULT 0', (err) => {
       if (err && !err.message.includes('duplicate column name')) {
         console.error('Column addition error:', err);
@@ -89,7 +114,21 @@ export class DatabaseConnection {
     return this.db;
   }
 
+  public getPool(): Pool {
+    if (!this.pool) {
+      throw new Error('PostgreSQL pool not connected');
+    }
+    return this.pool;
+  }
+
   public async query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
+    if (this.dbType === 'postgres') {
+      // Конвертируем ? в $1, $2, etc для PostgreSQL
+      const pgSql = this.convertToPostgresSQL(sql);
+      const result = await this.pool!.query(pgSql, params);
+      return result.rows as T[];
+    }
+
     return new Promise((resolve, reject) => {
       if (!this.db) {
         return reject(new Error('Database not connected'));
@@ -106,6 +145,12 @@ export class DatabaseConnection {
   }
 
   public async get<T>(sql: string, params: unknown[] = []): Promise<T | null> {
+    if (this.dbType === 'postgres') {
+      const pgSql = this.convertToPostgresSQL(sql);
+      const result = await this.pool!.query(pgSql, params);
+      return (result.rows[0] as T) || null;
+    }
+
     return new Promise((resolve, reject) => {
       if (!this.db) {
         return reject(new Error('Database not connected'));
@@ -122,6 +167,15 @@ export class DatabaseConnection {
   }
 
   public async run(sql: string, params: unknown[] = []): Promise<{ changes: number; lastID: number }> {
+    if (this.dbType === 'postgres') {
+      const pgSql = this.convertToPostgresSQL(sql);
+      const result = await this.pool!.query(pgSql, params);
+      return {
+        changes: result.rowCount || 0,
+        lastID: result.rows[0]?.id || 0
+      };
+    }
+
     return new Promise((resolve, reject) => {
       if (!this.db) {
         return reject(new Error('Database not connected'));
@@ -137,10 +191,20 @@ export class DatabaseConnection {
     });
   }
 
+  private convertToPostgresSQL(sql: string): string {
+    // Конвертируем ? в $1, $2, $3...
+    let index = 0;
+    return sql.replace(/\?/g, () => `$${++index}`);
+  }
+
   public close(): void {
     if (this.db) {
       this.db.close();
       this.db = null;
+    }
+    if (this.pool) {
+      this.pool.end();
+      this.pool = null;
     }
   }
 }

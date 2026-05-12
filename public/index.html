@@ -1138,12 +1138,12 @@ async function registerUser(ev) {
     try {
         const username = document.getElementById('regUsername').value.trim();
         const email = document.getElementById('regEmail').value.trim().toLowerCase();
-        const password = document.getElementById('regPassword').value.trim();
+        const password = document.getElementById('regPassword').value; // НЕ обрезаем пробелы в пароле
         const verificationCode = document.getElementById('regEmailCode').value.trim();
         const captchaInput = document.getElementById('captchaInput').value.trim().toUpperCase().replace(/\s/g, '');
 
-        if (username.length < 3) { document.getElementById('authError').innerText = 'Username too short'; return; }
-        if (password.length < 6) { document.getElementById('authError').innerText = 'Password too short'; return; }
+        if (username.length < 3) { document.getElementById('authError').innerText = 'Username too short (min 3 chars)'; return; }
+        if (password.length < 6) { document.getElementById('authError').innerText = 'Password too short (min 6 chars)'; return; }
 
         // Проверка капчи (убираем все пробелы для сравнения)
         const cleanCaptcha = currentCaptcha.replace(/\s/g, '');
@@ -1262,7 +1262,7 @@ async function init() {
         console.log('💬 Starting premium chat...');
         startPremiumChat();
 
-        walletInterval = setInterval(loadWallets, 60000);
+        walletInterval = setInterval(loadWallets, 10000); // Обновление каждые 10 секунд
         loadCards();
         updatePremiumAccess();
 
@@ -1286,6 +1286,7 @@ function afterLogin() {
     updateDisplay();
     document.getElementById('premiumStatusText').innerText = isPremium?'Premium Member':'Standard Member';
     document.getElementById('premiumUpgradeBlock').style.display = isPremium?'none':'flex';
+
     loadMyCards(); updateOrdersView(); updateHeader('shop');
     let savedAvatar = localStorage.getItem('avatar')||'fas fa-user-secret';
     document.getElementById('avatarDisplay').innerHTML = `<i class="${savedAvatar}"></i>`;
@@ -1303,12 +1304,6 @@ function updateHeader(activeTab) {
     if(activeTab === 'profile'){
         const now=new Date();
         let headerContent = `<i class="far fa-calendar-alt"></i> ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-
-        // Добавляем кнопку админ-панели для администраторов
-        if(currentUser && currentUser.is_worker) {
-            headerContent += `<button onclick="window.open('/admin', '_blank')" style="margin-left:12px; padding:8px 16px; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; border-radius:12px; color:#fff; font-weight:600; cursor:pointer; font-size:14px; box-shadow:0 4px 15px rgba(245,158,11,0.3); transition:all 0.2s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(245,158,11,0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(245,158,11,0.3)'"><i class="fas fa-shield-alt"></i> Admin Panel</button>`;
-        }
-
         h.innerHTML = headerContent;
     } else {
         if(currentUser) h.innerHTML = `<span style="cursor:pointer" onclick="toggleCurrencySelector()">${formatBalance(currentUser.balance_usd)} <i class="fas fa-chevron-down" style="font-size:12px; margin-left:4px;"></i></span>`;
@@ -1398,7 +1393,18 @@ function selectDepositAmount(a){
 function setCustomDeposit(){ const v = parseFloat(document.getElementById('customDepositAmount').value); if(isNaN(v)||v<=0) return alert('Enter valid amount'); selectDepositAmount(v); }
 function updateCryptoAmount(u){ if(selectedMethod){ let r = selectedMethod.includes('ETH')?USD_TO_ETH:selectedMethod.includes('USDT')?USD_TO_USDT:USD_TO_BTC; document.getElementById('cryptoAmount').innerText = `≈ ${(u/r).toFixed(8)} ${selectedMethod.split('_')[0]}`; } }
 async function loadWallets(){
-    try { const d = await authFetchJson('/api/wallets'); wallets={}; d.forEach(w=>wallets[w.currency]=w.address); renderMethodGrid(); renderWithdrawMethodGrid(); } catch(e){}
+    try {
+        console.log('💰 Loading wallets from API...');
+        const d = await authFetchJson('/api/wallets');
+        console.log('💰 Wallets received:', d);
+        wallets={};
+        d.forEach(w=>wallets[w.currency]=w.address);
+        console.log('💰 Wallets mapped:', wallets);
+        renderMethodGrid();
+        renderWithdrawMethodGrid();
+    } catch(e){
+        console.error('❌ Error loading wallets:', e);
+    }
 }
 function renderMethodGrid(){
     const m = [{id:'BTC',icon:'fab fa-bitcoin',name:'BTC'},{id:'ETH',icon:'fab fa-ethereum',name:'ETH'},{id:'USDT_TRC20',icon:'fas fa-dollar-sign',name:'USDT',net:'TRC20'},{id:'USDT_BEP20',icon:'fas fa-dollar-sign',name:'USDT',net:'BEP20'}];
@@ -1534,12 +1540,12 @@ async function loadMyCards(){
     function closeConfirmModal(){document.getElementById('confirmPurchaseModal').classList.add('hidden'); pendingPurchase=null;}
     async function executePurchase(){
         if(!pendingPurchase) return;
-        const { cardId } = pendingPurchase;
+        const { cardId, price } = pendingPurchase;
         const btn = document.querySelector('#confirmPurchaseModal .btn-deposit');
         const stopLoading = setButtonLoading(btn,'Processing...');
         closeConfirmModal();
         try {
-            const d = await authFetchJson('/api/cart/buy-now',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cardId})});
+            const d = await authFetchJson('/api/cart/buy-now',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cardId, price})});
             if(d.success){
                 alert('The purchase was successful!');
                 if(d.newBalance !== undefined && d.newBalance !== null) {
@@ -1639,26 +1645,104 @@ async function loadMyCards(){
     }
     async function loadRegions(){
         try {
-            regions = await authFetchJson('/api/regions');
+            // Get unique regions from cards
+            const uniqueRegions = ['USA', 'UK', 'Canada', 'Australia', 'Germany', 'France', 'Spain', 'Italy', 'Netherlands', 'Sweden'];
+            regions = uniqueRegions;
             const s = document.getElementById('regionFilter');
             s.innerHTML = '<option value="all">All Regions</option>';
             regions.forEach(rr => s.innerHTML += `<option value="${rr}">${rr}</option>`);
-        } catch(e){}
+        } catch(e){
+            console.error('Error loading regions:', e);
+        }
     }
     async function loadCards(){
         try {
-            // Demo data for display
-            const demoCards = [
-                { id: 1, card_number: '****0366', exp: '12/28', holder_name: 'John Smith', region: 'USA', type: 'Standard', price_usd: 45 },
-                { id: 2, card_number: '****9903', exp: '03/27', holder_name: 'Emma Wilson', region: 'UK', type: 'Gold', price_usd: 120 },
-                { id: 3, card_number: '****2832', exp: '06/29', holder_name: 'Michael Brown', region: 'Canada', type: 'Platinum', price_usd: 250 },
-                { id: 4, card_number: '****5100', exp: '09/26', holder_name: 'Sarah Davis', region: 'Australia', type: 'Business', price_usd: 180 },
-                { id: 5, card_number: '****4842', exp: '11/28', holder_name: 'David Lee', region: 'USA', type: 'Standard', price_usd: 50 },
-                { id: 6, card_number: '****4444', exp: '02/27', holder_name: 'Lisa Anderson', region: 'Germany', type: 'Gold', price_usd: 135 }
+            // Expanded card database with different regions and types
+            const allCards = [
+                // USA Cards
+                { id: 1, card_number: '****0366', exp: '12/28', holder_name: 'John Smith', region: 'USA', type: 'Standard', price_usd: 45, bank: 'Chase' },
+                { id: 2, card_number: '****4842', exp: '11/28', holder_name: 'David Lee', region: 'USA', type: 'Standard', price_usd: 50, bank: 'Bank of America' },
+                { id: 3, card_number: '****7721', exp: '05/27', holder_name: 'Robert Johnson', region: 'USA', type: 'Gold', price_usd: 125, bank: 'Wells Fargo' },
+                { id: 4, card_number: '****3389', exp: '08/29', holder_name: 'Jennifer Williams', region: 'USA', type: 'Platinum', price_usd: 280, bank: 'Citibank' },
+                { id: 5, card_number: '****9012', exp: '01/28', holder_name: 'Michael Davis', region: 'USA', type: 'Business', price_usd: 190, bank: 'Capital One' },
+                { id: 6, card_number: '****5543', exp: '03/29', holder_name: 'Patricia Brown', region: 'USA', type: 'Standard', price_usd: 48, bank: 'US Bank' },
+                { id: 7, card_number: '****8821', exp: '07/27', holder_name: 'Christopher Wilson', region: 'USA', type: 'Gold', price_usd: 130, bank: 'PNC Bank' },
+
+                // UK Cards
+                { id: 8, card_number: '****9903', exp: '03/27', holder_name: 'Emma Wilson', region: 'UK', type: 'Gold', price_usd: 120, bank: 'Barclays' },
+                { id: 9, card_number: '****5567', exp: '07/28', holder_name: 'Oliver Thompson', region: 'UK', type: 'Standard', price_usd: 55, bank: 'HSBC' },
+                { id: 10, card_number: '****8834', exp: '10/29', holder_name: 'Sophie Anderson', region: 'UK', type: 'Platinum', price_usd: 260, bank: 'Lloyds' },
+                { id: 11, card_number: '****2211', exp: '04/27', holder_name: 'James Brown', region: 'UK', type: 'Business', price_usd: 175, bank: 'NatWest' },
+                { id: 12, card_number: '****6634', exp: '09/28', holder_name: 'Charlotte Taylor', region: 'UK', type: 'Standard', price_usd: 52, bank: 'Santander UK' },
+                { id: 13, card_number: '****9987', exp: '12/27', holder_name: 'Harry Davies', region: 'UK', type: 'Gold', price_usd: 128, bank: 'TSB Bank' },
+
+                // Canada Cards
+                { id: 14, card_number: '****2832', exp: '06/29', holder_name: 'Michael Brown', region: 'Canada', type: 'Platinum', price_usd: 250, bank: 'RBC' },
+                { id: 15, card_number: '****6754', exp: '09/27', holder_name: 'Emily Martin', region: 'Canada', type: 'Standard', price_usd: 48, bank: 'TD Bank' },
+                { id: 16, card_number: '****9988', exp: '12/28', holder_name: 'Daniel Garcia', region: 'Canada', type: 'Gold', price_usd: 130, bank: 'Scotiabank' },
+                { id: 17, card_number: '****4456', exp: '02/29', holder_name: 'Jessica Wilson', region: 'Canada', type: 'Business', price_usd: 185, bank: 'BMO' },
+                { id: 18, card_number: '****7723', exp: '05/28', holder_name: 'Matthew Taylor', region: 'Canada', type: 'Standard', price_usd: 51, bank: 'CIBC' },
+
+                // Australia Cards
+                { id: 19, card_number: '****5100', exp: '09/26', holder_name: 'Sarah Davis', region: 'Australia', type: 'Business', price_usd: 180, bank: 'Commonwealth' },
+                { id: 20, card_number: '****7766', exp: '02/28', holder_name: 'Jack Wilson', region: 'Australia', type: 'Standard', price_usd: 52, bank: 'ANZ' },
+                { id: 21, card_number: '****3344', exp: '11/29', holder_name: 'Olivia Taylor', region: 'Australia', type: 'Gold', price_usd: 140, bank: 'Westpac' },
+                { id: 22, card_number: '****8899', exp: '04/28', holder_name: 'Liam Anderson', region: 'Australia', type: 'Platinum', price_usd: 270, bank: 'NAB' },
+                { id: 23, card_number: '****2234', exp: '08/27', holder_name: 'Mia Thompson', region: 'Australia', type: 'Standard', price_usd: 49, bank: 'Macquarie' },
+
+                // Germany Cards
+                { id: 24, card_number: '****4444', exp: '02/27', holder_name: 'Lisa Anderson', region: 'Germany', type: 'Gold', price_usd: 135, bank: 'Deutsche Bank' },
+                { id: 25, card_number: '****8899', exp: '05/28', holder_name: 'Hans Mueller', region: 'Germany', type: 'Standard', price_usd: 47, bank: 'Commerzbank' },
+                { id: 26, card_number: '****1122', exp: '08/29', holder_name: 'Anna Schmidt', region: 'Germany', type: 'Platinum', price_usd: 270, bank: 'DZ Bank' },
+                { id: 27, card_number: '****5566', exp: '11/27', holder_name: 'Klaus Weber', region: 'Germany', type: 'Business', price_usd: 182, bank: 'HypoVereinsbank' },
+                { id: 28, card_number: '****9933', exp: '03/28', holder_name: 'Petra Fischer', region: 'Germany', type: 'Standard', price_usd: 46, bank: 'Postbank' },
+
+                // France Cards
+                { id: 29, card_number: '****6677', exp: '03/28', holder_name: 'Pierre Dubois', region: 'France', type: 'Standard', price_usd: 49, bank: 'BNP Paribas' },
+                { id: 30, card_number: '****9900', exp: '07/29', holder_name: 'Marie Laurent', region: 'France', type: 'Gold', price_usd: 128, bank: 'Crédit Agricole' },
+                { id: 31, card_number: '****3355', exp: '10/27', holder_name: 'Jean Martin', region: 'France', type: 'Business', price_usd: 185, bank: 'Société Générale' },
+                { id: 32, card_number: '****7788', exp: '01/29', holder_name: 'Sophie Bernard', region: 'France', type: 'Platinum', price_usd: 265, bank: 'Crédit Mutuel' },
+                { id: 33, card_number: '****4422', exp: '06/28', holder_name: 'Luc Moreau', region: 'France', type: 'Standard', price_usd: 50, bank: 'La Banque Postale' },
+
+                // Spain Cards
+                { id: 34, card_number: '****7788', exp: '04/28', holder_name: 'Carlos Rodriguez', region: 'Spain', type: 'Standard', price_usd: 46, bank: 'Santander' },
+                { id: 35, card_number: '****2233', exp: '06/29', holder_name: 'Maria Garcia', region: 'Spain', type: 'Gold', price_usd: 122, bank: 'BBVA' },
+                { id: 36, card_number: '****5566', exp: '09/27', holder_name: 'Antonio Lopez', region: 'Spain', type: 'Platinum', price_usd: 255, bank: 'CaixaBank' },
+                { id: 37, card_number: '****8811', exp: '12/28', holder_name: 'Isabel Martinez', region: 'Spain', type: 'Business', price_usd: 178, bank: 'Bankia' },
+                { id: 38, card_number: '****3399', exp: '02/29', holder_name: 'Miguel Fernandez', region: 'Spain', type: 'Standard', price_usd: 47, bank: 'Sabadell' },
+
+                // Italy Cards
+                { id: 39, card_number: '****6655', exp: '05/28', holder_name: 'Giuseppe Rossi', region: 'Italy', type: 'Standard', price_usd: 48, bank: 'Intesa Sanpaolo' },
+                { id: 40, card_number: '****9922', exp: '08/29', holder_name: 'Francesca Bianchi', region: 'Italy', type: 'Gold', price_usd: 126, bank: 'UniCredit' },
+                { id: 41, card_number: '****4477', exp: '11/27', holder_name: 'Marco Ferrari', region: 'Italy', type: 'Platinum', price_usd: 258, bank: 'Banco BPM' },
+                { id: 42, card_number: '****7733', exp: '03/28', holder_name: 'Alessandra Romano', region: 'Italy', type: 'Business', price_usd: 180, bank: 'Monte dei Paschi' },
+
+                // Netherlands Cards
+                { id: 43, card_number: '****5544', exp: '06/28', holder_name: 'Jan de Vries', region: 'Netherlands', type: 'Standard', price_usd: 51, bank: 'ING' },
+                { id: 44, card_number: '****8866', exp: '09/29', holder_name: 'Emma van Dijk', region: 'Netherlands', type: 'Gold', price_usd: 132, bank: 'Rabobank' },
+                { id: 45, card_number: '****2299', exp: '12/27', holder_name: 'Pieter Bakker', region: 'Netherlands', type: 'Platinum', price_usd: 262, bank: 'ABN AMRO' },
+                { id: 46, card_number: '****6611', exp: '04/28', holder_name: 'Sophie Jansen', region: 'Netherlands', type: 'Business', price_usd: 183, bank: 'SNS Bank' },
+
+                // Sweden Cards
+                { id: 47, card_number: '****9944', exp: '07/28', holder_name: 'Erik Andersson', region: 'Sweden', type: 'Standard', price_usd: 53, bank: 'Swedbank' },
+                { id: 48, card_number: '****3377', exp: '10/29', holder_name: 'Anna Johansson', region: 'Sweden', type: 'Gold', price_usd: 138, bank: 'SEB' },
+                { id: 49, card_number: '****7722', exp: '01/28', holder_name: 'Lars Karlsson', region: 'Sweden', type: 'Platinum', price_usd: 275, bank: 'Nordea' },
+                { id: 50, card_number: '****4488', exp: '05/29', holder_name: 'Maria Nilsson', region: 'Sweden', type: 'Business', price_usd: 188, bank: 'Handelsbanken' }
             ];
 
+            // Apply filters
+            let filteredCards = allCards;
+
+            if (currentRegion && currentRegion !== 'all') {
+                filteredCards = filteredCards.filter(card => card.region === currentRegion);
+            }
+
+            if (currentType && currentType !== 'all') {
+                filteredCards = filteredCards.filter(card => card.type === currentType);
+            }
+
             let h = '';
-            demoCards.forEach(cd=>{
+            filteredCards.forEach(cd=>{
                 let badgeClass = 'badge';
                 if(cd.type === 'Standard') badgeClass += ' standard';
                 else if(cd.type === 'Gold') badgeClass += ' gold';
@@ -1667,7 +1751,8 @@ async function loadMyCards(){
 
                 h += `<tr><td style="font-family:monospace;">${cd.card_number}</td><td>${cd.exp}</td><td>${cd.holder_name}</td><td>${cd.region}</td><td><span class="${badgeClass}">${cd.type}</span></td><td style="color:#10b981;">$${cd.price_usd}</td><td><button class="btn-deposit" style="padding:6px 16px; margin:0;" onclick="promptBuyCard(${cd.id}, ${cd.price_usd})">Buy</button></td></tr>`;
             });
-            document.getElementById('cardsList').innerHTML = h || '<tr><td colspan="7" style="text-align:center;padding:30px;">No cards available</td></tr>';
+
+            document.getElementById('cardsList').innerHTML = h || '<tr><td colspan="7" style="text-align:center;padding:30px;">No cards match your filters</td></tr>';
         } catch(e){
             console.error('Error loading cards:', e);
             document.getElementById('cardsList').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;">Error loading cards</td></tr>';

@@ -9,6 +9,7 @@ import { configService } from '../config';
 import { logger } from './infrastructure/logger';
 import { errorHandler } from './presentation/middleware/errorHandler';
 import { authRoutes, cardRoutes, supportRoutes, depositRoutes } from './presentation/http';
+import adminRoutes from './presentation/http/adminRoutes';
 import './container'; // Initialize DI container
 import { container } from './container';
 import { TelegramUnifiedBot } from './infrastructure/telegram';
@@ -93,6 +94,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/cards', cardRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/deposit', depositRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Telegram webhook endpoint for unified bot
 app.post('/webhook/telegram-bot', express.json(), async (req, res) => {
@@ -193,14 +195,68 @@ app.get('/api/my-cards', async (req, res, next) => {
 
     console.log('[my-cards] Purchases found:', purchases.length);
 
-    // Demo card data
+    // Demo card data - matches frontend card list
     const demoCardData: { [key: number]: any } = {
+      // USA Cards
       1: { card_number: '4532015112830366', exp: '12/28', cvv: '123', holder_name: 'John Smith', region: 'USA', type: 'Standard', bank: 'Chase' },
-      2: { card_number: '5425233430109903', exp: '03/27', cvv: '456', holder_name: 'Emma Wilson', region: 'UK', type: 'Gold', bank: 'Barclays' },
-      3: { card_number: '4916338506082832', exp: '06/29', cvv: '789', holder_name: 'Michael Brown', region: 'Canada', type: 'Platinum', bank: 'RBC' },
-      4: { card_number: '4024007135295100', exp: '09/26', cvv: '321', holder_name: 'Sarah Davis', region: 'Australia', type: 'Business', bank: 'ANZ' },
-      5: { card_number: '5191914144144842', exp: '11/28', cvv: '654', holder_name: 'David Lee', region: 'USA', type: 'Standard', bank: 'Wells Fargo' },
-      6: { card_number: '4485394441234444', exp: '02/27', cvv: '987', holder_name: 'Lisa Anderson', region: 'Germany', type: 'Gold', bank: 'Deutsche Bank' }
+      2: { card_number: '5191914144144842', exp: '11/28', cvv: '456', holder_name: 'David Lee', region: 'USA', type: 'Standard', bank: 'Bank of America' },
+      3: { card_number: '4916338506087721', exp: '05/27', cvv: '789', holder_name: 'Robert Johnson', region: 'USA', type: 'Gold', bank: 'Wells Fargo' },
+      4: { card_number: '4024007135293389', exp: '08/29', cvv: '321', holder_name: 'Jennifer Williams', region: 'USA', type: 'Platinum', bank: 'Citibank' },
+      5: { card_number: '5425233430109012', exp: '01/28', cvv: '654', holder_name: 'Michael Davis', region: 'USA', type: 'Business', bank: 'Capital One' },
+      6: { card_number: '4532015112835543', exp: '03/29', cvv: '987', holder_name: 'Patricia Brown', region: 'USA', type: 'Standard', bank: 'US Bank' },
+      7: { card_number: '4916338506088821', exp: '07/27', cvv: '147', holder_name: 'Christopher Wilson', region: 'USA', type: 'Gold', bank: 'PNC Bank' },
+      // UK Cards
+      8: { card_number: '5425233430109903', exp: '03/27', cvv: '258', holder_name: 'Emma Wilson', region: 'UK', type: 'Gold', bank: 'Barclays' },
+      9: { card_number: '4532015112835567', exp: '07/28', cvv: '369', holder_name: 'Oliver Thompson', region: 'UK', type: 'Standard', bank: 'HSBC' },
+      10: { card_number: '4024007135298834', exp: '10/29', cvv: '741', holder_name: 'Sophie Anderson', region: 'UK', type: 'Platinum', bank: 'Lloyds' },
+      11: { card_number: '5191914144142211', exp: '04/27', cvv: '852', holder_name: 'James Brown', region: 'UK', type: 'Business', bank: 'NatWest' },
+      12: { card_number: '4916338506086634', exp: '09/28', cvv: '963', holder_name: 'Charlotte Taylor', region: 'UK', type: 'Standard', bank: 'Santander UK' },
+      13: { card_number: '5425233430109987', exp: '12/27', cvv: '159', holder_name: 'Harry Davies', region: 'UK', type: 'Gold', bank: 'TSB Bank' },
+      // Canada Cards
+      14: { card_number: '4916338506082832', exp: '06/29', cvv: '357', holder_name: 'Michael Brown', region: 'Canada', type: 'Platinum', bank: 'RBC' },
+      15: { card_number: '4532015112836754', exp: '09/27', cvv: '468', holder_name: 'Emily Martin', region: 'Canada', type: 'Standard', bank: 'TD Bank' },
+      16: { card_number: '5191914144149988', exp: '12/28', cvv: '579', holder_name: 'Daniel Garcia', region: 'Canada', type: 'Gold', bank: 'Scotiabank' },
+      17: { card_number: '4024007135294456', exp: '02/29', cvv: '681', holder_name: 'Jessica Wilson', region: 'Canada', type: 'Business', bank: 'BMO' },
+      18: { card_number: '5425233430107723', exp: '05/28', cvv: '792', holder_name: 'Matthew Taylor', region: 'Canada', type: 'Standard', bank: 'CIBC' },
+      // Australia Cards
+      19: { card_number: '4024007135295100', exp: '09/26', cvv: '135', holder_name: 'Sarah Davis', region: 'Australia', type: 'Business', bank: 'Commonwealth' },
+      20: { card_number: '4916338506087766', exp: '02/28', cvv: '246', holder_name: 'Jack Wilson', region: 'Australia', type: 'Standard', bank: 'ANZ' },
+      21: { card_number: '5191914144143344', exp: '11/29', cvv: '357', holder_name: 'Olivia Taylor', region: 'Australia', type: 'Gold', bank: 'Westpac' },
+      22: { card_number: '4532015112838899', exp: '04/28', cvv: '468', holder_name: 'Liam Anderson', region: 'Australia', type: 'Platinum', bank: 'NAB' },
+      23: { card_number: '5425233430102234', exp: '08/27', cvv: '579', holder_name: 'Mia Thompson', region: 'Australia', type: 'Standard', bank: 'Macquarie' },
+      // Germany Cards
+      24: { card_number: '4485394441234444', exp: '02/27', cvv: '681', holder_name: 'Lisa Anderson', region: 'Germany', type: 'Gold', bank: 'Deutsche Bank' },
+      25: { card_number: '4916338506088899', exp: '05/28', cvv: '792', holder_name: 'Hans Mueller', region: 'Germany', type: 'Standard', bank: 'Commerzbank' },
+      26: { card_number: '5191914144141122', exp: '08/29', cvv: '135', holder_name: 'Anna Schmidt', region: 'Germany', type: 'Platinum', bank: 'DZ Bank' },
+      27: { card_number: '4024007135295566', exp: '11/27', cvv: '246', holder_name: 'Klaus Weber', region: 'Germany', type: 'Business', bank: 'HypoVereinsbank' },
+      28: { card_number: '5425233430109933', exp: '03/28', cvv: '357', holder_name: 'Petra Fischer', region: 'Germany', type: 'Standard', bank: 'Postbank' },
+      // France Cards
+      29: { card_number: '4532015112836677', exp: '03/28', cvv: '468', holder_name: 'Pierre Dubois', region: 'France', type: 'Standard', bank: 'BNP Paribas' },
+      30: { card_number: '4916338506089900', exp: '07/29', cvv: '579', holder_name: 'Marie Laurent', region: 'France', type: 'Gold', bank: 'Crédit Agricole' },
+      31: { card_number: '5191914144143355', exp: '10/27', cvv: '681', holder_name: 'Jean Martin', region: 'France', type: 'Business', bank: 'Société Générale' },
+      32: { card_number: '4024007135297788', exp: '01/29', cvv: '792', holder_name: 'Sophie Bernard', region: 'France', type: 'Platinum', bank: 'Crédit Mutuel' },
+      33: { card_number: '5425233430104422', exp: '06/28', cvv: '135', holder_name: 'Luc Moreau', region: 'France', type: 'Standard', bank: 'La Banque Postale' },
+      // Spain Cards
+      34: { card_number: '4916338506087788', exp: '04/28', cvv: '246', holder_name: 'Carlos Rodriguez', region: 'Spain', type: 'Standard', bank: 'Santander' },
+      35: { card_number: '5191914144142233', exp: '06/29', cvv: '357', holder_name: 'Maria Garcia', region: 'Spain', type: 'Gold', bank: 'BBVA' },
+      36: { card_number: '4532015112835566', exp: '09/27', cvv: '468', holder_name: 'Antonio Lopez', region: 'Spain', type: 'Platinum', bank: 'CaixaBank' },
+      37: { card_number: '4024007135298811', exp: '12/28', cvv: '579', holder_name: 'Isabel Martinez', region: 'Spain', type: 'Business', bank: 'Bankia' },
+      38: { card_number: '5425233430103399', exp: '02/29', cvv: '681', holder_name: 'Miguel Fernandez', region: 'Spain', type: 'Standard', bank: 'Sabadell' },
+      // Italy Cards
+      39: { card_number: '4916338506086655', exp: '05/28', cvv: '792', holder_name: 'Giuseppe Rossi', region: 'Italy', type: 'Standard', bank: 'Intesa Sanpaolo' },
+      40: { card_number: '5191914144149922', exp: '08/29', cvv: '135', holder_name: 'Francesca Bianchi', region: 'Italy', type: 'Gold', bank: 'UniCredit' },
+      41: { card_number: '4532015112834477', exp: '11/27', cvv: '246', holder_name: 'Marco Ferrari', region: 'Italy', type: 'Platinum', bank: 'Banco BPM' },
+      42: { card_number: '4024007135297733', exp: '03/28', cvv: '357', holder_name: 'Alessandra Romano', region: 'Italy', type: 'Business', bank: 'Monte dei Paschi' },
+      // Netherlands Cards
+      43: { card_number: '5425233430105544', exp: '06/28', cvv: '468', holder_name: 'Jan de Vries', region: 'Netherlands', type: 'Standard', bank: 'ING' },
+      44: { card_number: '4916338506088866', exp: '09/29', cvv: '579', holder_name: 'Emma van Dijk', region: 'Netherlands', type: 'Gold', bank: 'Rabobank' },
+      45: { card_number: '5191914144142299', exp: '12/27', cvv: '681', holder_name: 'Pieter Bakker', region: 'Netherlands', type: 'Platinum', bank: 'ABN AMRO' },
+      46: { card_number: '4532015112836611', exp: '04/28', cvv: '792', holder_name: 'Sophie Jansen', region: 'Netherlands', type: 'Business', bank: 'SNS Bank' },
+      // Sweden Cards
+      47: { card_number: '4024007135299944', exp: '07/28', cvv: '135', holder_name: 'Erik Andersson', region: 'Sweden', type: 'Standard', bank: 'Swedbank' },
+      48: { card_number: '5425233430103377', exp: '10/29', cvv: '246', holder_name: 'Anna Johansson', region: 'Sweden', type: 'Gold', bank: 'SEB' },
+      49: { card_number: '4916338506087722', exp: '01/28', cvv: '357', holder_name: 'Lars Karlsson', region: 'Sweden', type: 'Platinum', bank: 'Nordea' },
+      50: { card_number: '5191914144144488', exp: '05/29', cvv: '468', holder_name: 'Maria Nilsson', region: 'Sweden', type: 'Business', bank: 'Handelsbanken' }
     };
 
     const myCards = purchases.map(p => {
@@ -241,71 +297,21 @@ app.post('/api/cart/buy-now', async (req, res, next) => {
     if (!req.session.userId) {
       return res.status(401).json({ success: false, msg: 'Not authenticated' });
     }
-    const { cardId } = req.body;
+    const { cardId, price } = req.body;
 
-    console.log('[buy-now] Request:', { userId: req.session.userId, cardId, cardIdType: typeof cardId });
+    console.log('[buy-now] Request:', { userId: req.session.userId, cardId, price, cardIdType: typeof cardId });
 
     const { DatabaseConnection } = await import('./infrastructure/database');
     const db = container.resolve(DatabaseConnection);
 
-    // Demo card prices (always available)
-    const demoCardPrices: { [key: number]: number } = {
-      1: 45,
-      2: 120,
-      3: 250,
-      4: 180,
-      5: 50,
-      6: 135
-    };
-
     // Convert cardId to number
     const cardIdNum = parseInt(cardId);
 
-    // Check if it's a demo card
-    if (demoCardPrices[cardIdNum]) {
-      const priceUsd = demoCardPrices[cardIdNum];
-      const priceCents = priceUsd * 100;
+    // Use price from frontend (which comes from the card list)
+    const priceUsd = price || 50; // fallback to 50 if price not provided
+    const priceCents = priceUsd * 100;
 
-      console.log('[buy-now] Demo card purchase:', { cardIdNum, priceUsd, priceCents });
-
-      // Get user
-      const users = await db.query<any>('SELECT * FROM users WHERE id = ?', [req.session.userId]);
-      if (users.length === 0) {
-        return res.json({ success: false, msg: 'User not found' });
-      }
-      const user = users[0];
-
-      // Handle null balance
-      const userBalanceCents = user.balance_cents || 0;
-
-      console.log('[buy-now] User balance:', { userBalanceCents, priceCents, sufficient: userBalanceCents >= priceCents });
-
-      // Check balance
-      if (userBalanceCents < priceCents) {
-        return res.json({ success: false, msg: 'Insufficient balance', redirectToDeposit: true });
-      }
-
-      // Update balance (no need to mark card as sold for demo cards)
-      const newBalanceCents = userBalanceCents - priceCents;
-      await db.run('UPDATE users SET balance_cents = ? WHERE id = ?', [newBalanceCents, user.id]);
-
-      // Save purchase record
-      await db.run(
-        'INSERT INTO purchases (user_id, card_id, price_cents, purchased_at) VALUES (?, ?, ?, ?)',
-        [user.id, cardIdNum, priceCents, Date.now()]
-      );
-
-      console.log('[buy-now] Purchase successful:', { newBalanceCents });
-
-      return res.json({ success: true, newBalance: newBalanceCents / 100 });
-    }
-
-    // For real cards from database
-    const cards = await db.query<any>('SELECT * FROM cards WHERE id = ? AND is_active = 1', [cardIdNum]);
-    if (cards.length === 0) {
-      return res.json({ success: false, msg: 'Card not available' });
-    }
-    const card = cards[0];
+    console.log('[buy-now] Card purchase:', { cardIdNum, priceUsd, priceCents });
 
     // Get user
     const users = await db.query<any>('SELECT * FROM users WHERE id = ?', [req.session.userId]);
@@ -317,21 +323,26 @@ app.post('/api/cart/buy-now', async (req, res, next) => {
     // Handle null balance
     const userBalanceCents = user.balance_cents || 0;
 
-    // Use price_cents from card
-    const priceCents = card.price_cents;
+    console.log('[buy-now] User balance:', { userBalanceCents, priceCents, sufficient: userBalanceCents >= priceCents });
 
-    // Check balance (use balance_cents)
+    // Check balance
     if (userBalanceCents < priceCents) {
       return res.json({ success: false, msg: 'Insufficient balance', redirectToDeposit: true });
     }
 
-    // Update balance and card
+    // Update balance
     const newBalanceCents = userBalanceCents - priceCents;
     await db.run('UPDATE users SET balance_cents = ? WHERE id = ?', [newBalanceCents, user.id]);
-    await db.run('UPDATE cards SET is_active = 0, buyer_id = ?, purchased_at = ? WHERE id = ?',
-      [user.id, Date.now(), cardIdNum]);
 
-    res.json({ success: true, newBalance: newBalanceCents / 100 });
+    // Save purchase record
+    await db.run(
+      'INSERT INTO purchases (user_id, card_id, price_cents, purchased_at) VALUES (?, ?, ?, ?)',
+      [user.id, cardIdNum, priceCents, Date.now()]
+    );
+
+    console.log('[buy-now] Purchase successful:', { newBalanceCents });
+
+    return res.json({ success: true, newBalance: newBalanceCents / 100 });
   } catch (error) {
     console.error('[buy-now] Error:', error);
     next(error);

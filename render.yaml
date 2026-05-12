@@ -1,0 +1,46 @@
+databases:
+  - name: crystal-db
+    databaseName: crystal
+    user: crystal
+
+services:
+  - type: web
+    name: crystal-site
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: crystal-db
+          property: connectionString
+      - key: SESSION_SECRET
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: USER_BOT_TOKEN
+        sync: false
+      - key: ADMIN_BOT_TOKEN
+        sync: false
+      - key: SUPPORT_BOT_TOKEN
+        sync: false
+      - key: CONTROL_BOT_TOKEN
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: BOT_USERNAME
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: CONTROL_CHAT_ID
+        sync: false
+      - key: ENABLE_BOT_POLLING
+        value: false
