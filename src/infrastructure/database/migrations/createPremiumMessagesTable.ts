@@ -6,10 +6,10 @@ export async function createPremiumMessagesTable(db: DatabaseConnection): Promis
   await db.run(`
     CREATE TABLE IF NOT EXISTS premium_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
+      user_id TEXT NOT NULL,
+      username TEXT NOT NULL,
       message TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id)
+      time TEXT NOT NULL
     )
   `);
 
