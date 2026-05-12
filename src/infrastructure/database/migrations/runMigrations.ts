@@ -8,6 +8,7 @@ import { addBuyerIdColumn } from './addBuyerIdColumn';
 import { createCardsTable } from './createCardsTable';
 import { createConversationsTable } from './createConversationsTable';
 import { createChatMessagesTable } from './createChatMessagesTable';
+import { createMessagesTable } from './createMessagesTable';
 import { ensureWalletsTable } from './ensureWalletsTable';
 
 export async function runMigrations(db: DatabaseConnection): Promise<void> {
@@ -23,6 +24,7 @@ export async function runMigrations(db: DatabaseConnection): Promise<void> {
     await addBuyerIdColumn(db);
     await createConversationsTable(db);
     await createChatMessagesTable(db);
+    await createMessagesTable(db);
     await ensureWalletsTable(db);
     console.log('✅ All migrations completed successfully');
   } catch (error) {
