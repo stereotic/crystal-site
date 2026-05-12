@@ -11,6 +11,8 @@ export async function createMessagesTable(db: DatabaseConnection): Promise<void>
         user_email TEXT NOT NULL,
         role TEXT NOT NULL,
         text TEXT NOT NULL,
+        file_id TEXT,
+        file_type TEXT,
         time INTEGER NOT NULL
       )
     `);
