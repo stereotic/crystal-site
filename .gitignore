@@ -20,7 +20,8 @@ build/
 *.db-wal
 sessions.db*
 
-# IDE
+# IDE / local agent settings
+.claude/
 .vscode/
 .idea/
 *.swp
