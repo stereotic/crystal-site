@@ -696,7 +696,7 @@ const mirrorBots = {};
 const sharedBot = new Composer();
 const isAdmin = ctx => ADMIN_IDS.includes(String(ctx.from.id));
 
-userBot.catch((err, ctx) => { console.error('UserBot error:', err.message); logToAdmin(`⚠️ UserBot error: ${err.message}`); });
+userBot.catch((err, ctx) => { console.error('UserBot error:', err.message); });
 adminBot.catch((err, ctx) => { console.error('AdminBot error:', err.message); });
 
 async function resolveWorkerByRef(ref) {
