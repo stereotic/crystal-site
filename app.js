@@ -1206,20 +1206,23 @@ sharedBot.on('text', async (ctx) => {
     if (pendingMirrorToken[uid]) {
         delete pendingMirrorToken[uid];
         const token = ctx.message.text.trim();
+        console.log(`[mirror] validating token, len=${token.length} starts=${token.substring(0,10)}`);
         if (!token || !token.match(/^\d+:[A-Za-z0-9_-]+$/)) {
+            console.log(`[mirror] regex FAILED for token: ${token.substring(0,15)}`);
             await ctx.reply('❌ Неверный токен, попробуйте заново');
             return;
         }
         let username;
         try {
             const { data } = await axios.get(`https://api.telegram.org/bot${token}/getMe`, { timeout: 10000 });
+            console.log(`[mirror] getMe response ok=${data.ok} hasUsername=${!!data.result?.username}`);
             if (!data.ok || !data.result?.username) {
                 await ctx.reply('❌ Неверный токен, попробуйте заново');
                 return;
             }
             username = data.result.username;
         } catch (e) {
-            console.error('Token validation error:', e.message);
+            console.error('[mirror] axios error:', e.message, e.code);
             await ctx.reply('❌ Неверный токен, попробуйте заново');
             return;
         }
