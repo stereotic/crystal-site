@@ -965,8 +965,7 @@ sharedBot.action(/mirror_(.+)/, async (ctx) => {
     if (!mirror) return ctx.reply('❌ Зеркало не найдено.');
     const date = new Date(mirror.created_at).toLocaleString();
     await ctx.reply(
-        `🤖 Зеркало @${mirror.bot_username}\n📅 Создан: ${date}\n${mirror.is_active ? '✅ Активен' : '❌ Неактивен'}`,
-        Markup.inlineKeyboard([Markup.button.callback('🔙 Назад', 'worker_panel_back')])
+        `🤖 Зеркало @${mirror.bot_username}\n📅 Создан: ${date}\n${mirror.is_active ? '✅ Активен' : '❌ Неактивен'}`
     );
     ctx.answerCbQuery();
 });
@@ -1022,8 +1021,7 @@ sharedBot.action('my_mammoths_list', async (ctx) => {
         if (page < totalPages) nav.push(Markup.button.callback('Вперёд ⏩', `mammoth_page_${page+1}`));
         keyboard.push(nav);
     }
-    keyboard.push([Markup.button.callback('🔙 Вернуться обратно', 'worker_panel_back')]);
-    ctx.editMessageText(text, { reply_markup: Markup.inlineKeyboard(keyboard) }).catch(() => {});
+    ctx.reply(text, { reply_markup: Markup.inlineKeyboard(keyboard) }).catch(() => {});
     ctx.answerCbQuery();
 });
 userBot.action(/mammoth_page_(\d+)/, async (ctx) => {
