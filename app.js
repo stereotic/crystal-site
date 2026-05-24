@@ -878,6 +878,7 @@ sharedBot.command('mirror', async (ctx) => {
     const user = await get("SELECT is_worker FROM users WHERE tg_id = ?", [tgId]);
     if (!user || !user.is_worker) return ctx.reply('❌ Только для воркеров.');
     pendingMirrorToken[uid] = true;
+    console.log(`[mirror] pendingMirrorToken set for uid=${uid}`);
     ctx.reply('Введите токен вашего бота:');
 });
 
@@ -1199,6 +1200,10 @@ async function launchMirrorBot(token, workerTgId) {
 }
 
 // Обработчик текстовых сообщений (привязка аккаунта, изменение мин. депозита, баланса, привязка мамонта)
+sharedBot.use(async (ctx, next) => {
+    console.log(`[text] from:${ctx.from?.id} text:${ctx.message?.text?.substring(0,40)} type:${ctx.updateType}`);
+    return next();
+});
 sharedBot.on('text', async (ctx) => {
     const uid = ctx.from.id;
     const tid = uid.toString();
