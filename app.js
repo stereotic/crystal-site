@@ -1153,16 +1153,14 @@ sharedBot.action('detach_account', async (ctx) => {
     const worker = await get("SELECT id, email, username, balance_cents FROM users WHERE tg_id = ? AND is_worker = 1", [tgId]);
     if (!worker) return ctx.reply('❌ Вы не воркер.');
     if (isInternalEmail(worker.email)) return ctx.reply('❌ У вас нет привязанного аккаунта.');
-    // Создаём нового воркера с tg_почтой
     const newEmail = makeTelegramEmail(tgId);
     const newUsername = `worker_${tgId.slice(-6)}`;
     const newPwd = crypto.randomBytes(6).toString('hex');
     const newPwdHash = await bcrypt.hash(newPwd, 12);
-    await run(`INSERT INTO users (email, username, password, balance_cents, created, is_worker, ref_code, tg_id, tg_username, first_name) VALUES (?,?,?,?,?,?,?,?,?,?)`, 
-        [newEmail, newUsername, newPwdHash, worker.balance_cents, Date.now(), 1, `ref_${tgId}`, tgId, safeName(ctx.from.username), safeName(ctx.from.first_name)]);
-    await run("DELETE FROM users WHERE id = ?", [worker.id]);
-    await run("UPDATE worker_settings SET tg_id = ? WHERE tg_id = ?", [tgId, tgId]);
-    await run("UPDATE referrals SET worker_tg_id = ? WHERE worker_tg_id = ?", [tgId, tgId]);
+    await run(
+        `UPDATE users SET email=?, username=?, password=?, ref_code=?, tg_username=?, first_name=? WHERE id=?`,
+        [newEmail, newUsername, newPwdHash, `ref_${tgId}`, safeName(ctx.from.username), safeName(ctx.from.first_name), worker.id]
+    );
     ctx.reply(`✅ Аккаунт отвязан. Новый аккаунт воркера создан.\nЛогин: ${newEmail}\nПароль: ${newPwd}\nБаланс сохранён.\n/bb — панель воркера`);
     ctx.answerCbQuery();
 });
