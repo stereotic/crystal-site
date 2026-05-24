@@ -1055,8 +1055,7 @@ userBot.action(/mammoth_page_(\d+)/, async (ctx) => {
         if (page < totalPages) nav.push(Markup.button.callback('Вперёд ⏩', `mammoth_page_${page+1}`));
         keyboard.push(nav);
     }
-    keyboard.push([Markup.button.callback('🔙 Вернуться обратно', 'worker_panel_back')]);
-    ctx.editMessageText(text, { reply_markup: Markup.inlineKeyboard(keyboard) }).catch(() => {});
+    ctx.reply(text, { reply_markup: Markup.inlineKeyboard(keyboard) }).catch(() => {});
     ctx.answerCbQuery();
 });
 sharedBot.action('worker_panel_back', async (ctx) => {
