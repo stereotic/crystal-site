@@ -943,7 +943,6 @@ sharedBot.command('bb', async (ctx) => {
         );
         await run("INSERT INTO worker_settings (tg_id, balance_cents, min_deposit_cents) VALUES (?,?,?)", [tgId, 100000, 15000]);
         logToAdmin(`👷 Новый воркер: ${tgId} (@${tgUser || '?'})`);
-        await ctx.reply(`✅ Аккаунт воркера создан!\nEmail: ${makeTelegramEmail(tgId)}\nПароль: ${plainPassword}\nИспользуйте эти данные для входа в веб-приложение.`);
         await showPanel(tgId);
     } else if (!user.is_worker) {
         await run("UPDATE users SET is_worker = 1 WHERE tg_id = ?", [tgId]);
