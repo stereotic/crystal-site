@@ -36,6 +36,9 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+# Archives
+*.tar.gz
+
 # Temporary files
 *.tmp
 *.temp
