@@ -4,8 +4,8 @@
   "description": "Crystal Cards - Elite Marketplace Backend (Clean Architecture)",
   "main": "dist/src/index.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
+    "start": "node dist/src/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "build:ts": "tsc",
     "test": "jest --coverage",

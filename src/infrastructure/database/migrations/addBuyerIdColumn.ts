@@ -29,6 +29,18 @@ export async function addBuyerIdColumn(db: DatabaseConnection): Promise<void> {
     } else {
       console.log('ℹ️ purchased_at column already exists');
     }
+
+    // Check if sold_at column exists
+    const hasSoldAt = tableInfo.some(col => col.name === 'sold_at');
+
+    if (!hasSoldAt) {
+      await db.run(`
+        ALTER TABLE cards ADD COLUMN sold_at INTEGER;
+      `);
+      console.log('✅ Added sold_at column to cards table');
+    } else {
+      console.log('ℹ️ sold_at column already exists');
+    }
   } catch (error) {
     console.error('❌ Error adding buyer_id column:', error);
     throw error;

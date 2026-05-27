@@ -173,7 +173,12 @@ app.get('/api/cards/available', async (req, res, next) => {
 
     // Get only active and unsold cards
     const cards = await db.query<any>(
-      'SELECT id, region, type, card_number, exp, holder_name, bank, bin, price_cents FROM cards WHERE is_active = 1 AND is_sold = 0 ORDER BY created_at DESC LIMIT 100',
+      `SELECT id, region, type,
+              '****' || SUBSTR(card_number, -4) as card_number,
+              exp, holder_name, bank, bin, price_cents
+       FROM cards
+       WHERE is_active = 1 AND is_sold = 0
+       ORDER BY created_at DESC LIMIT 100`,
       []
     );
 
