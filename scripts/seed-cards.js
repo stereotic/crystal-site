@@ -47,10 +47,10 @@ function insertBatch() {
     const bank = pick(banks[region] || ['Unknown Bank']);
     const now = Date.now() - (totalCards - inserted) * 1000;
 
-    values.push(`(${priceCents},'${region}','${type}','${cardNumber}','${exp}','${holderName.replace(/'/g, "''")}','${cvv}','${bank.replace(/'/g, "''")}','${bin}',${now})`);
+    values.push(`(${priceCents},'${region}','${type}','${cardNumber}','${exp}','${holderName.replace(/'/g, "''")}','${cvv}','${bank.replace(/'/g, "''")}','${bin}',1,0,${now})`);
   }
 
-  const sql = `INSERT INTO cards (price_cents, region, type, card_number, exp, holder_name, cvv, bank, bin, created_at) VALUES ${values.join(',')}`;
+  const sql =     `INSERT INTO cards (price_cents, region, type, card_number, exp, holder_name, cvv, bank, bin, is_active, is_sold, created_at) VALUES ${values.join(',')}`;
   db.run(sql, (err) => {
     if (err) {
       console.error('Insert error:', err.message);
