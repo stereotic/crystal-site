@@ -22,7 +22,7 @@ interface Config {
     userBotToken: string;
     adminBotToken: string;
     supportBotToken: string;
-    controlBotToken: string;
+    controlBotToken?: string;
     botUsername: string;
     adminIds: string[];
     controlChatId: string;

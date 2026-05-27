@@ -43,6 +43,7 @@ export class TelegramUnifiedBot {
     });
 
     this.bot = new Telegraf(botToken);
+
     this.setupHandlers();
   }
 
@@ -556,8 +557,7 @@ export class TelegramUnifiedBot {
         requestId,
         username,
         amount,
-        controlChatId: this.controlChatId,
-        keyboard: keyboard.reply_markup
+        controlChatId: this.controlChatId
       });
 
       const sentMessage = await this.bot.telegram.sendMessage(this.controlChatId, message, {
@@ -764,5 +764,13 @@ export class TelegramUnifiedBot {
       'USDT_BEP20': '💵'
     };
     return emojiMap[currency] || '💰';
+  }
+
+  public async handleControlBotUpdate(update: any): Promise<void> {
+    try {
+      await this.handleUpdate(update);
+    } catch (error) {
+      logger.error('Error handling control bot webhook update', { error });
+    }
   }
 }

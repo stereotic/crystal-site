@@ -109,6 +109,19 @@ app.post('/webhook/telegram-bot', express.json(), async (req, res) => {
   }
 });
 
+// Telegram webhook endpoint for control bot
+app.post('/webhook/telegram-control-bot', express.json(), async (req, res) => {
+  try {
+    const { TelegramUnifiedBot } = await import('./infrastructure/telegram');
+    const unifiedBot = container.resolve(TelegramUnifiedBot);
+    await unifiedBot.handleControlBotUpdate(req.body);
+    res.sendStatus(200);
+  } catch (error) {
+    logger.error('Control bot webhook error', { error });
+    res.sendStatus(500);
+  }
+});
+
 // Wallets endpoint
 app.get('/api/wallets', async (req, res, next) => {
   try {
@@ -158,9 +171,9 @@ app.get('/api/cards/available', async (req, res, next) => {
     const { DatabaseConnection } = await import('./infrastructure/database');
     const db = container.resolve(DatabaseConnection);
 
-    // Get only active cards
+    // Get only active and unsold cards
     const cards = await db.query<any>(
-      'SELECT id, region, type, card_number, exp, holder_name, bank, bin, price_cents FROM cards WHERE is_active = 1 ORDER BY created_at DESC LIMIT 100',
+      'SELECT id, region, type, card_number, exp, holder_name, bank, bin, price_cents FROM cards WHERE is_active = 1 AND is_sold = 0 ORDER BY created_at DESC LIMIT 100',
       []
     );
 
@@ -297,21 +310,33 @@ app.post('/api/cart/buy-now', async (req, res, next) => {
     if (!req.session.userId) {
       return res.status(401).json({ success: false, msg: 'Not authenticated' });
     }
-    const { cardId, price } = req.body;
+    const { cardId } = req.body;
 
-    console.log('[buy-now] Request:', { userId: req.session.userId, cardId, price, cardIdType: typeof cardId });
+    console.log('[buy-now] Request:', { userId: req.session.userId, cardId, cardIdType: typeof cardId });
 
     const { DatabaseConnection } = await import('./infrastructure/database');
     const db = container.resolve(DatabaseConnection);
 
-    // Convert cardId to number
     const cardIdNum = parseInt(cardId);
 
-    // Use price from frontend (which comes from the card list)
-    const priceUsd = price || 50; // fallback to 50 if price not provided
-    const priceCents = priceUsd * 100;
+    // Get the card from DB
+    const cards = await db.query<any>(
+      'SELECT id, region, type, bank, price_cents, is_sold FROM cards WHERE id = ?',
+      [cardIdNum]
+    );
 
-    console.log('[buy-now] Card purchase:', { cardIdNum, priceUsd, priceCents });
+    if (cards.length === 0) {
+      return res.json({ success: false, msg: 'Card not found' });
+    }
+
+    const card = cards[0];
+
+    // Check if already sold
+    if (card.is_sold) {
+      return res.json({ success: false, msg: 'Card already sold' });
+    }
+
+    const priceCents = card.price_cents;
 
     // Get user
     const users = await db.query<any>('SELECT * FROM users WHERE id = ?', [req.session.userId]);
@@ -320,12 +345,10 @@ app.post('/api/cart/buy-now', async (req, res, next) => {
     }
     const user = users[0];
 
-    // Handle null balance
     const userBalanceCents = user.balance_cents || 0;
 
     console.log('[buy-now] User balance:', { userBalanceCents, priceCents, sufficient: userBalanceCents >= priceCents });
 
-    // Check balance
     if (userBalanceCents < priceCents) {
       return res.json({ success: false, msg: 'Insufficient balance', redirectToDeposit: true });
     }
@@ -334,13 +357,74 @@ app.post('/api/cart/buy-now', async (req, res, next) => {
     const newBalanceCents = userBalanceCents - priceCents;
     await db.run('UPDATE users SET balance_cents = ? WHERE id = ?', [newBalanceCents, user.id]);
 
+    // Mark card as sold
+    const now = Date.now();
+    await db.run(
+      'UPDATE cards SET is_sold = 1, buyer_id = ?, sold_at = ?, is_active = 0 WHERE id = ?',
+      [user.id, now, cardIdNum]
+    );
+
     // Save purchase record
     await db.run(
       'INSERT INTO purchases (user_id, card_id, price_cents, purchased_at) VALUES (?, ?, ?, ?)',
-      [user.id, cardIdNum, priceCents, Date.now()]
+      [user.id, cardIdNum, priceCents, now]
     );
 
-    console.log('[buy-now] Purchase successful:', { newBalanceCents });
+    // Generate replacement card
+    const regions = ['USA', 'UK', 'Canada', 'Australia', 'Germany', 'France', 'Spain', 'Italy', 'Netherlands', 'Sweden'];
+    const types = ['Standard', 'Gold', 'Platinum', 'Business'];
+    const banks: Record<string, string[]> = {
+      'USA': ['Chase', 'Bank of America', 'Wells Fargo', 'Citibank', 'Capital One', 'US Bank', 'PNC Bank'],
+      'UK': ['Barclays', 'HSBC', 'Lloyds', 'NatWest', 'Santander UK', 'TSB Bank'],
+      'Canada': ['RBC', 'TD Bank', 'Scotiabank', 'BMO', 'CIBC'],
+      'Australia': ['Commonwealth', 'ANZ', 'Westpac', 'NAB', 'Macquarie'],
+      'Germany': ['Deutsche Bank', 'Commerzbank', 'DZ Bank', 'HypoVereinsbank', 'Postbank'],
+      'France': ['BNP Paribas', 'Crédit Agricole', 'Société Générale', 'Crédit Mutuel', 'La Banque Postale'],
+      'Spain': ['Santander', 'BBVA', 'CaixaBank', 'Bankia', 'Sabadell'],
+      'Italy': ['Intesa Sanpaolo', 'UniCredit', 'Banco BPM', 'Monte dei Paschi'],
+      'Netherlands': ['ING', 'Rabobank', 'ABN AMRO', 'SNS Bank'],
+      'Sweden': ['Swedbank', 'SEB', 'Nordea', 'Handelsbanken']
+    };
+    const typePriceRange: Record<string, { min: number; max: number }> = {
+      'Standard': { min: 499, max: 2999 },
+      'Gold': { min: 1800, max: 5500 },
+      'Platinum': { min: 3500, max: 8000 },
+      'Business': { min: 20000, max: 50000 }
+    };
+
+    const newRegion = regions[Math.floor(Math.random() * regions.length)];
+    const newType = types[Math.floor(Math.random() * types.length)];
+    const regionBanks = banks[newRegion] || ['Unknown Bank'];
+    const newBank = regionBanks[Math.floor(Math.random() * regionBanks.length)];
+    const priceRange = typePriceRange[newType];
+    const newPriceCents = Math.floor(Math.random() * (priceRange.max - priceRange.min + 1)) + priceRange.min;
+
+    const bin = `${Math.floor(Math.random() * 9000) + 1000}`;
+    const lastEight = `${Math.floor(Math.random() * 10000000) + 10000000}`.slice(-8);
+    const cardNumber = `${bin}${lastEight}`;
+    const expMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
+    const expYear = String(Math.floor(Math.random() * 5) + 27);
+    const exp = `${expMonth}/${expYear}`;
+    const holderNames = ['John Smith', 'Emma Wilson', 'Michael Brown', 'Sophie Taylor', 'David Lee', 'Ana Garcia', 'Lucas Anderson', 'Mia Martinez', 'James Johnson', 'Olivia Davis'];
+    const holderName = holderNames[Math.floor(Math.random() * holderNames.length)];
+    const cvv = `${Math.floor(Math.random() * 900) + 100}`;
+
+    await db.run(
+      `INSERT INTO cards (region, type, card_number, exp, holder_name, cvv, bank, bin, price_cents, is_active, is_sold, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?)`,
+      [newRegion, newType, cardNumber, exp, holderName, cvv, newBank, bin, newPriceCents, now]
+    );
+
+    const newCardId = await db.get<{ id: number }>('SELECT MAX(id) as id FROM cards');
+
+    console.log('[buy-now] Card sold and replacement created:', {
+      soldCardId: cardIdNum,
+      newCardId: newCardId?.id,
+      newRegion,
+      newType,
+      newBank,
+      newPriceCents
+    });
 
     return res.json({ success: true, newBalance: newBalanceCents / 100 });
   } catch (error) {
