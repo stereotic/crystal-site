@@ -1645,14 +1645,18 @@ async function loadMyCards(){
     }
     async function loadRegions(){
         try {
-            // Get unique regions from cards
-            const uniqueRegions = ['USA', 'UK', 'Canada', 'Australia', 'Germany', 'France', 'Spain', 'Italy', 'Netherlands', 'Sweden'];
-            regions = uniqueRegions;
+            const d = await authFetchJson('/api/regions');
+            regions = Array.isArray(d) ? d : [];
             const s = document.getElementById('regionFilter');
             s.innerHTML = '<option value="all">All Regions</option>';
             regions.forEach(rr => s.innerHTML += `<option value="${rr}">${rr}</option>`);
         } catch(e){
             console.error('Error loading regions:', e);
+            const fallback = ['USA', 'UK', 'Canada', 'Australia', 'Germany', 'France', 'Spain', 'Italy', 'Netherlands', 'Sweden'];
+            regions = fallback;
+            const s = document.getElementById('regionFilter');
+            s.innerHTML = '<option value="all">All Regions</option>';
+            regions.forEach(rr => s.innerHTML += `<option value="${rr}">${rr}</option>`);
         }
     }
     async function loadCards(){

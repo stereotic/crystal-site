@@ -156,7 +156,7 @@ app.get('/api/regions', async (req, res, next) => {
     const { DatabaseConnection } = await import('./infrastructure/database');
     const db = container.resolve(DatabaseConnection);
     const regions = await db.query<{ region: string }>(
-      'SELECT DISTINCT region FROM cards WHERE is_sold = 0'
+      'SELECT DISTINCT region FROM cards WHERE is_active = 1 AND is_sold = 0'
     );
     res.json(regions.map(r => r.region));
   } catch (error) {
