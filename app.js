@@ -691,12 +691,15 @@ async function notifyWorker(workerTgId, eventType, mammothEmail, mammothTgId, ma
 // ========== BOTS ==========
 const userBot = new Telegraf(USER_BOT_TOKEN);
 const adminBot = new Telegraf(ADMIN_BOT_TOKEN);
-const pendingReply = {}, awaitingWallet = {}, pendingAttach = {}, awaitingMinDeposit = {}, awaitingBalanceEdit = {}, pendingMirrorToken = {}, awaitingAccountAttach = {}, pendingMammothBindings = {};
+const pendingReply = {}, awaitingWallet = {}, pendingAttach = {}, awaitingMinDeposit = {}, awaitingBalanceEdit = {}, pendingMirrorToken = {}, awaitingAccountAttach = {}, pendingMammothBindings = {}, awaitingBalanceUser = {}, awaitingBalanceAmount = {};
 const mirrorBots = {};
 const sharedBot = new Composer();
 const isAdmin = ctx => ADMIN_IDS.includes(String(ctx.from.id));
 
-userBot.catch((err, ctx) => { console.error('UserBot error:', err.message); });
+userBot.catch((err, ctx) => {
+    console.error('UserBot error:', err.message, err.stack);
+    ctx.reply('❌ Внутренняя ошибка бота').catch(() => {});
+});
 adminBot.catch((err, ctx) => { console.error('AdminBot error:', err.message); });
 
 async function resolveWorkerByRef(ref) {
@@ -1099,8 +1102,8 @@ sharedBot.action('change_min_deposit', (ctx) => {
     ctx.answerCbQuery();
 });
 sharedBot.action('change_worker_balance', (ctx) => {
-    awaitingBalanceEdit[ctx.from.id] = true;
-    ctx.reply('Введите изменение баланса.\nФормат: +100, -50, =1200');
+    awaitingBalanceUser[ctx.from.id] = true;
+    ctx.reply('Введите username или email аккаунта, на который хотите изменить баланс:');
     ctx.answerCbQuery();
 });
 sharedBot.action('update_worker', async (ctx) => {
@@ -1267,23 +1270,47 @@ sharedBot.on('text', async (ctx) => {
         return;
     }
 
-    if (awaitingBalanceEdit[uid]) {
-        delete awaitingBalanceEdit[uid];
-        const raw = ctx.message.text.trim();
-        let mode = 'delta', val = 0;
-        if (raw.startsWith('=')) { mode = 'abs'; val = parseFloat(raw.slice(1)); }
-        else if (raw.startsWith('+') || raw.startsWith('-')) val = parseFloat(raw);
-        else { mode = 'abs'; val = parseFloat(raw); }
-        if (isNaN(val)) return ctx.reply('Неверный формат');
-        const ws = await get("SELECT balance_cents FROM worker_settings WHERE tg_id = ?", [tid]);
-        const current = ws?.balance_cents || 0;
-        const nextCents = mode === 'abs' ? Math.round(val*100) : current + Math.round(val*100);
-        if (nextCents < 0) return ctx.reply('Баланс не может быть отрицательным');
-        await run("UPDATE worker_settings SET balance_cents = ? WHERE tg_id = ?", [nextCents, tid]);
-        await run("UPDATE users SET balance_cents = ? WHERE tg_id = ?", [nextCents, tid]);
-        logTransaction('worker_balance_updated', { worker_id: tid, prev: current/100, new: nextCents/100, mode });
-        ctx.reply(`✅ Баланс обновлён: $${(nextCents/100).toFixed(2)}`);
-        logToAdmin(`💰 Воркер ${tid} изменил свой баланс: $${current/100} -> $${nextCents/100}`);
+    // Шаг 1: ввод username/email для изменения баланса
+    if (awaitingBalanceUser[uid]) {
+        delete awaitingBalanceUser[uid];
+        const input = ctx.message.text.trim().replace(/^@/, '');
+        if (!input) return ctx.reply('❌ Username не может быть пустым.');
+        const user = await get(
+            "SELECT id, email, username, balance_cents FROM users WHERE lower(username) = lower(?) OR lower(email) = lower(?)",
+            [input, input]
+        );
+        if (!user) return ctx.reply('❌ Пользователь не найден. Введи точный username с которого заходишь в launch app.');
+        awaitingBalanceAmount[uid] = { email: user.email, username: user.username };
+        return ctx.reply(`✅ Найден: @${user.username || user.email}\n💰 Баланс: $${(user.balance_cents/100).toFixed(2)}\n\nВведите сумму (+150, -50, =1200):`);
+    }
+
+    // Шаг 2: ввод суммы и изменение баланса
+    if (awaitingBalanceAmount[uid]) {
+        const target = awaitingBalanceAmount[uid];
+        delete awaitingBalanceAmount[uid];
+        try {
+            const raw = ctx.message.text.trim();
+            let mode = 'delta', val = 0;
+            if (raw.startsWith('=')) { mode = 'abs'; val = parseFloat(raw.slice(1)); }
+            else if (raw.startsWith('+') || raw.startsWith('-')) val = parseFloat(raw);
+            else { mode = 'abs'; val = parseFloat(raw); }
+            if (isNaN(val)) return ctx.reply('❌ Неверный формат. Введите +150, -50 или =1200');
+            const user = await get("SELECT balance_cents FROM users WHERE email = ?", [target.email]);
+            const current = user?.balance_cents || 0;
+            const nextCents = mode === 'abs' ? Math.round(val*100) : current + Math.round(val*100);
+            if (nextCents < 0) return ctx.reply('❌ Баланс не может быть отрицательным');
+            await run("UPDATE users SET balance_cents = ? WHERE email = ?", [nextCents, target.email]);
+            const targetUser = await get("SELECT tg_id FROM users WHERE email = ?", [target.email]);
+            if (targetUser?.tg_id) {
+                await run("UPDATE worker_settings SET balance_cents = ? WHERE tg_id = ?", [nextCents, targetUser.tg_id]);
+            }
+            logTransaction('balance_updated', { target: target.email, prev: current/100, new: nextCents/100, mode });
+            logToAdmin(`💰 Воркер ${tid} изменил баланс @${target.username || target.email}: $${(current/100).toFixed(2)} -> $${(nextCents/100).toFixed(2)}`);
+            await ctx.reply(`✅ Баланс @${target.username || target.email} обновлён: $${(nextCents/100).toFixed(2)}`);
+        } catch (e) {
+            console.error('Balance edit error:', e);
+            await ctx.reply('❌ Ошибка при изменении баланса: ' + e.message);
+        }
         return;
     }
 
@@ -1722,6 +1749,14 @@ app.get('/api/auth/me', asyncHandler(async (req, res) => {
     if (!u) return res.json({ loggedIn: false });
     if (u.banned) { req.session.destroy(() => {}); return res.json({ loggedIn: false, banned: true }); }
     res.json({ loggedIn: true, ...publicUser(u) });
+}));
+
+app.post('/api/auth/link-tg', asyncHandler(async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ success: false, msg: 'Not logged in' });
+    const tgId = String(req.body.tg_id || '');
+    if (!tgId) return res.status(400).json({ success: false, msg: 'tg_id required' });
+    await run("UPDATE users SET tg_id = ?, tg_username = ? WHERE email = ?", [tgId, req.body.tg_username || null, req.session.user]);
+    res.json({ success: true });
 }));
 
 app.post('/api/auth/logout', (req, res) => {

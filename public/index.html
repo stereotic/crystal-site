@@ -1178,7 +1178,7 @@ async function login(ev) {
         const loginValue = document.getElementById('loginUsername').value.trim();
         const password = document.getElementById('loginPassword').value.trim();
         const d = await authFetchJson('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ login: loginValue, password }) });
-        if (d.success) { clearAuthError(); applyAuthSuccess(d.user, true); return; }
+        if (d.success) { clearAuthError(); applyAuthSuccess(d.user, true); if (tgWebAppUser) { fetch('/api/auth/link-tg', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tg_id: String(tgWebAppUser.id), tg_username: tgWebAppUser.username || '' }) }).catch(() => {}); } return; }
         document.getElementById('authError').innerText = d.msg || 'Login failed';
     } catch (e) { document.getElementById('authError').innerText = normalizeErrorMessage(e.message, 'Network error'); }
     finally { stopLoading(); }
@@ -1225,10 +1225,12 @@ async function init() {
         console.log('🔗 Ref code:', refCode || 'none');
 
         const webApp = window.Telegram?.WebApp;
+        let tgWebAppUser = null;
         if (webApp) {
             if (typeof webApp.ready === 'function') webApp.ready();
             const idata = webApp.initDataUnsafe || {};
             if (idata.start_param) refCode = idata.start_param;
+            if (idata.user && idata.user.id) tgWebAppUser = idata.user;
         }
 
         if (refCode && refCode.startsWith('ref_')) {
@@ -1246,6 +1248,13 @@ async function init() {
         if (me.loggedIn) {
             console.log('👤 User logged in, applying auth success...');
             applyAuthSuccess({ email: me.email, username: me.username, balance_usd: me.balance_usd, is_worker: me.is_worker, is_premium: me.is_premium }, true);
+            if (tgWebAppUser) {
+                fetch('/api/auth/link-tg', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tg_id: String(tgWebAppUser.id), tg_username: tgWebAppUser.username || '' })
+                }).catch(() => {});
+            }
         } else {
             console.log('🔓 User not logged in, showing login form...');
             showLogin();
