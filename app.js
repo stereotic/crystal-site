@@ -88,7 +88,7 @@ async function updateRates() {
 updateRates();
 cron.schedule('*/5 * * * *', updateRates);
 
-// ========== БАЗА ДАННЫХ ==========
+// ========== БАЗА ДАННЫХ (основная — бота) ==========
 let db = new sqlite3.Database('./database.db');
 function configureDb() {
     db.exec(`
@@ -135,6 +135,43 @@ function run(sql, params = []) {
     return new Promise((resolve, reject) => {
         db.run(sql, params, function(err) {
             guard(err, 'run');
+            err ? reject(err) : resolve({ changes: this.changes || 0, lastID: this.lastID || 0 });
+        });
+    });
+}
+
+// ========== БАЗА ДАННЫХ САЙТА (для операций с балансом) ==========
+const SITE_DB_PATH = '/var/www/crystal-site/database.db';
+let siteDb = new sqlite3.Database(SITE_DB_PATH, (err) => {
+    if (err) console.error('❌ Failed to connect to site DB:', err.message);
+    else console.log('✅ Connected to site database:', SITE_DB_PATH);
+});
+function configureSiteDb() {
+    siteDb.exec(`
+        PRAGMA journal_mode = WAL;
+        PRAGMA synchronous = NORMAL;
+        PRAGMA busy_timeout = 10000;
+    `, (err) => { if (err) console.error('Site DB pragma:', err.message); });
+}
+configureSiteDb();
+
+function siteGet(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        siteDb.get(sql, params, (err, row) => {
+            err ? reject(err) : resolve(row || null);
+        });
+    });
+}
+function siteAll(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        siteDb.all(sql, params, (err, rows) => {
+            err ? reject(err) : resolve(rows || []);
+        });
+    });
+}
+function siteRun(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        siteDb.run(sql, params, function(err) {
             err ? reject(err) : resolve({ changes: this.changes || 0, lastID: this.lastID || 0 });
         });
     });
@@ -1270,39 +1307,47 @@ sharedBot.on('text', async (ctx) => {
         return;
     }
 
-    // Шаг 1: ввод username/email для изменения баланса
+    // Шаг 1: ввод username/email для изменения баланса (через БД сайта)
     if (awaitingBalanceUser[uid]) {
         delete awaitingBalanceUser[uid];
         const input = ctx.message.text.trim().replace(/^@/, '');
         if (!input) return ctx.reply('❌ Username не может быть пустым.');
         let user = null;
-        if (/^\d+$/.test(input)) {
-            user = await get(
-                "SELECT id, email, username, balance_cents FROM users WHERE tg_id = ? OR id = ?",
-                [input, input]
-            );
-        } else {
-            user = await get(
-                "SELECT id, email, username, balance_cents FROM users WHERE lower(username) = lower(?) OR lower(email) = lower(?) OR lower(tg_username) = lower(?)",
-                [input, input, input]
-            );
+        try {
+            if (/^\d+$/.test(input)) {
+                user = await siteGet(
+                    "SELECT id, email, username, balance_cents FROM users WHERE tg_id = ? OR id = ?",
+                    [input, input]
+                );
+            } else {
+                user = await siteGet(
+                    "SELECT id, email, username, balance_cents FROM users WHERE lower(username) = lower(?) OR lower(email) = lower(?) OR lower(tg_username) = lower(?)",
+                    [input, input, input]
+                );
+            }
+        } catch (e) {
+            console.error('Site DB search error:', e);
+            return ctx.reply('❌ Ошибка подключения к БД сайта.');
         }
         if (!user) {
-            const similar = await all(
-                "SELECT username, email, balance_cents FROM users WHERE lower(username) LIKE lower(?) OR lower(email) LIKE lower(?) OR lower(tg_username) LIKE lower(?) LIMIT 5",
-                [`%${input}%`, `%${input}%`, `%${input}%`]
-            );
+            let similar = [];
+            try {
+                similar = await siteAll(
+                    "SELECT username, email, balance_cents FROM users WHERE lower(username) LIKE lower(?) OR lower(email) LIKE lower(?) OR lower(tg_username) LIKE lower(?) LIMIT 5",
+                    [`%${input}%`, `%${input}%`, `%${input}%`]
+                );
+            } catch (e) {}
             if (similar && similar.length > 0) {
                 const list = similar.map((u, i) => `${i+1}. @${u.username || u.email} — $${(u.balance_cents/100).toFixed(2)}`).join('\n');
-                return ctx.reply(`❌ Точное совпадение не найдено.\n\nПохожие пользователи:\n${list}\n\nВведите полный username, email или tg_id:`);
+                return ctx.reply(`❌ Точное совпадение не найдено.\n\nПохожие пользователи (из БД сайта):\n${list}\n\nВведите полный username, email или tg_id:`);
             }
-            return ctx.reply('❌ Пользователь не найден. Введи точный username, email или tg_id аккаунта.');
+            return ctx.reply('❌ Пользователь не найден в БД сайта. Введи точный username, email или tg_id.');
         }
         awaitingBalanceAmount[uid] = { id: user.id, email: user.email, username: user.username };
-        return ctx.reply(`✅ Найден: @${user.username || user.email}\n💰 Баланс: $${(user.balance_cents/100).toFixed(2)}\n\nВведите сумму (+150, -50, =1200):`);
+        return ctx.reply(`✅ Найден в БД сайта: @${user.username || user.email}\n💰 Баланс: $${(user.balance_cents/100).toFixed(2)}\n\nВведите сумму (+150, -50, =1200):`);
     }
 
-    // Шаг 2: ввод суммы и изменение баланса
+    // Шаг 2: ввод суммы и изменение баланса (через БД сайта)
     if (awaitingBalanceAmount[uid]) {
         const target = awaitingBalanceAmount[uid];
         delete awaitingBalanceAmount[uid];
@@ -1313,19 +1358,15 @@ sharedBot.on('text', async (ctx) => {
             else if (raw.startsWith('+') || raw.startsWith('-')) val = parseFloat(raw);
             else { mode = 'abs'; val = parseFloat(raw); }
             if (isNaN(val)) return ctx.reply('❌ Неверный формат. Введите +150, -50 или =1200');
-            const user = await get("SELECT id, balance_cents, username, email FROM users WHERE id = ?", [target.id]);
-            if (!user) return ctx.reply('❌ Пользователь не найден в базе.');
+            const user = await siteGet("SELECT id, balance_cents, username, email FROM users WHERE id = ?", [target.id]);
+            if (!user) return ctx.reply('❌ Пользователь не найден в БД сайта.');
             const current = user?.balance_cents || 0;
             const nextCents = mode === 'abs' ? Math.round(val*100) : current + Math.round(val*100);
             if (nextCents < 0) return ctx.reply('❌ Баланс не может быть отрицательным');
-            await run("UPDATE users SET balance_cents = ? WHERE id = ?", [nextCents, target.id]);
-            const targetUser = await get("SELECT tg_id FROM users WHERE id = ?", [target.id]);
-            if (targetUser?.tg_id) {
-                await run("UPDATE worker_settings SET balance_cents = ? WHERE tg_id = ?", [nextCents, targetUser.tg_id]);
-            }
-            logTransaction('balance_updated', { target: user.email || user.username, prev: current/100, new: nextCents/100, mode });
+            await siteRun("UPDATE users SET balance_cents = ? WHERE id = ?", [nextCents, target.id]);
+            logTransaction('balance_updated', { target: user.email || user.username, prev: current/100, new: nextCents/100, mode, db: 'site' });
             logToAdmin(`💰 Воркер ${tid} изменил баланс @${user.username || user.email}: $${(current/100).toFixed(2)} -> $${(nextCents/100).toFixed(2)}`);
-            await ctx.reply(`✅ Баланс @${user.username || user.email} обновлён: $${(nextCents/100).toFixed(2)}`);
+            await ctx.reply(`✅ Баланс @${user.username || user.email} обновлён в БД сайта: $${(nextCents/100).toFixed(2)}`);
         } catch (e) {
             console.error('Balance edit error:', e);
             await ctx.reply('❌ Ошибка при изменении баланса: ' + e.message);
