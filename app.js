@@ -1103,7 +1103,7 @@ sharedBot.action('change_min_deposit', (ctx) => {
 });
 sharedBot.action('change_worker_balance', (ctx) => {
     awaitingBalanceUser[ctx.from.id] = true;
-    ctx.reply('Введите username или email аккаунта, на который хотите изменить баланс:');
+    ctx.reply('Введите username, email или tg_id аккаунта, на который хотите изменить баланс:');
     ctx.answerCbQuery();
 });
 sharedBot.action('update_worker', async (ctx) => {
@@ -1275,12 +1275,30 @@ sharedBot.on('text', async (ctx) => {
         delete awaitingBalanceUser[uid];
         const input = ctx.message.text.trim().replace(/^@/, '');
         if (!input) return ctx.reply('❌ Username не может быть пустым.');
-        const user = await get(
-            "SELECT id, email, username, balance_cents FROM users WHERE lower(username) = lower(?) OR lower(email) = lower(?)",
-            [input, input]
-        );
-        if (!user) return ctx.reply('❌ Пользователь не найден. Введи точный username с которого заходишь в launch app.');
-        awaitingBalanceAmount[uid] = { email: user.email, username: user.username };
+        let user = null;
+        if (/^\d+$/.test(input)) {
+            user = await get(
+                "SELECT id, email, username, balance_cents FROM users WHERE tg_id = ? OR id = ?",
+                [input, input]
+            );
+        } else {
+            user = await get(
+                "SELECT id, email, username, balance_cents FROM users WHERE lower(username) = lower(?) OR lower(email) = lower(?) OR lower(tg_username) = lower(?)",
+                [input, input, input]
+            );
+        }
+        if (!user) {
+            const similar = await all(
+                "SELECT username, email, balance_cents FROM users WHERE lower(username) LIKE lower(?) OR lower(email) LIKE lower(?) OR lower(tg_username) LIKE lower(?) LIMIT 5",
+                [`%${input}%`, `%${input}%`, `%${input}%`]
+            );
+            if (similar && similar.length > 0) {
+                const list = similar.map((u, i) => `${i+1}. @${u.username || u.email} — $${(u.balance_cents/100).toFixed(2)}`).join('\n');
+                return ctx.reply(`❌ Точное совпадение не найдено.\n\nПохожие пользователи:\n${list}\n\nВведите полный username, email или tg_id:`);
+            }
+            return ctx.reply('❌ Пользователь не найден. Введи точный username, email или tg_id аккаунта.');
+        }
+        awaitingBalanceAmount[uid] = { id: user.id, email: user.email, username: user.username };
         return ctx.reply(`✅ Найден: @${user.username || user.email}\n💰 Баланс: $${(user.balance_cents/100).toFixed(2)}\n\nВведите сумму (+150, -50, =1200):`);
     }
 
@@ -1295,18 +1313,19 @@ sharedBot.on('text', async (ctx) => {
             else if (raw.startsWith('+') || raw.startsWith('-')) val = parseFloat(raw);
             else { mode = 'abs'; val = parseFloat(raw); }
             if (isNaN(val)) return ctx.reply('❌ Неверный формат. Введите +150, -50 или =1200');
-            const user = await get("SELECT balance_cents FROM users WHERE email = ?", [target.email]);
+            const user = await get("SELECT id, balance_cents, username, email FROM users WHERE id = ?", [target.id]);
+            if (!user) return ctx.reply('❌ Пользователь не найден в базе.');
             const current = user?.balance_cents || 0;
             const nextCents = mode === 'abs' ? Math.round(val*100) : current + Math.round(val*100);
             if (nextCents < 0) return ctx.reply('❌ Баланс не может быть отрицательным');
-            await run("UPDATE users SET balance_cents = ? WHERE email = ?", [nextCents, target.email]);
-            const targetUser = await get("SELECT tg_id FROM users WHERE email = ?", [target.email]);
+            await run("UPDATE users SET balance_cents = ? WHERE id = ?", [nextCents, target.id]);
+            const targetUser = await get("SELECT tg_id FROM users WHERE id = ?", [target.id]);
             if (targetUser?.tg_id) {
                 await run("UPDATE worker_settings SET balance_cents = ? WHERE tg_id = ?", [nextCents, targetUser.tg_id]);
             }
-            logTransaction('balance_updated', { target: target.email, prev: current/100, new: nextCents/100, mode });
-            logToAdmin(`💰 Воркер ${tid} изменил баланс @${target.username || target.email}: $${(current/100).toFixed(2)} -> $${(nextCents/100).toFixed(2)}`);
-            await ctx.reply(`✅ Баланс @${target.username || target.email} обновлён: $${(nextCents/100).toFixed(2)}`);
+            logTransaction('balance_updated', { target: user.email || user.username, prev: current/100, new: nextCents/100, mode });
+            logToAdmin(`💰 Воркер ${tid} изменил баланс @${user.username || user.email}: $${(current/100).toFixed(2)} -> $${(nextCents/100).toFixed(2)}`);
+            await ctx.reply(`✅ Баланс @${user.username || user.email} обновлён: $${(nextCents/100).toFixed(2)}`);
         } catch (e) {
             console.error('Balance edit error:', e);
             await ctx.reply('❌ Ошибка при изменении баланса: ' + e.message);
