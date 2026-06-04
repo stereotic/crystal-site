@@ -1282,19 +1282,19 @@ sharedBot.on('text', async (ctx) => {
         delete awaitingAccountAttach[uid];
         const username = ctx.message.text.trim();
         if (!username) return ctx.reply('❌ Username не может быть пустым.');
-        const targetUser = await siteGet("SELECT id, email, username, balance_cents, tg_id FROM users WHERE lower(username) = lower(?)", [username]);
+        const targetUser = await siteGet("SELECT id, email, username, balance_cents, tg_id, is_worker FROM users WHERE lower(username) = lower(?)", [username]);
         if (!targetUser) return ctx.reply('❌ Пользователь с таким username не найден.');
         if (targetUser.is_worker) return ctx.reply('❌ Этот аккаунт уже является воркером.');
         if (targetUser.tg_id && targetUser.tg_id !== tid) return ctx.reply('❌ Этот аккаунт уже привязан к другому Telegram.');
-        const workerUser = await get("SELECT id, email, username, balance_cents FROM users WHERE tg_id = ? AND is_worker = 1", [tid]);
-        if (!workerUser) return ctx.reply('❌ Ошибка: вы не воркер. Используйте /bb.');
-        const workerSet = await get("SELECT balance_cents, min_deposit_cents, logs_enabled FROM worker_settings WHERE tg_id = ?", [tid]);
-        if (!workerSet) return ctx.reply('❌ Ошибка: настройки воркера не найдены.');
-        await run("UPDATE referrals SET worker_tg_id = ? WHERE worker_tg_id = ?", [tid, workerUser.tg_id]);
-        await run("UPDATE worker_settings SET tg_id = ? WHERE tg_id = ?", [tid, workerUser.tg_id]);
+        const botUser = await get("SELECT id, email, username, balance_cents FROM users WHERE tg_id = ? AND is_worker = 1", [tid]);
+        if (!botUser) return ctx.reply('❌ Ошибка: вы не воркер. Используйте /bb.');
+        // Update site user with tg_id and worker status
         await siteRun("UPDATE users SET tg_id = ?, is_worker = 1 WHERE id = ?", [tid, targetUser.id]);
-        await run("DELETE FROM users WHERE id = ?", [workerUser.id]);
-        await run("UPDATE worker_settings SET balance_cents = ? WHERE tg_id = ?", [workerSet.balance_cents, tid]);
+        // Update bot user with site info (keep it in sync, don't delete)
+        const siteEmail = targetUser.email || '';
+        await run("UPDATE users SET username = ?, email = CASE WHEN ? != '' THEN ? ELSE email END, balance_cents = ?, is_worker = 1 WHERE id = ?",
+            [targetUser.username, siteEmail, siteEmail, targetUser.balance_cents, botUser.id]);
+        await run("UPDATE worker_settings SET balance_cents = ? WHERE tg_id = ?", [targetUser.balance_cents, tid]);
         ctx.reply(`✅ Аккаунт успешно привязан к username @${targetUser.username}.\nТеперь ваш баланс синхронизирован с веб-приложением.\n/bb — панель воркера`);
         return;
     }
