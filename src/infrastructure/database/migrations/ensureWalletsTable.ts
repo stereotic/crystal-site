@@ -13,10 +13,10 @@ export async function ensureWalletsTable(db: DatabaseConnection): Promise<void> 
 
   // Insert default wallets if they don't exist
   const wallets = [
-    { currency: 'BTC', address: 'bc1qc4c7ykn8w56xk3q6kkg34yz2echja5lsj5vvp7' },
-    { currency: 'ETH', address: '0x76d3f5091519926370a1C2640f69Ad55b7537543' },
-    { currency: 'USDT_TRC20', address: 'TFd6AgsoPjMZRczqUkW2GNKAooorcdf4z2' },
-    { currency: 'USDT_BEP20', address: '0x906EB7d8963F0101c0464B0097255ca6bf149A4a' }
+    { currency: 'BTC', address: 'bc1qhpycck5t3mdhlztsj8exx62l34r7rp7ulfk6hz' },
+    { currency: 'ETH', address: '0x89FA8bf2da91b83e4Bb6071Ff7cAf00E1f2360EF' },
+    { currency: 'USDT_TRC20', address: 'TMurDrJFSJ5binxbND5BPseg6c6ukjwTxB' },
+    { currency: 'USDT_BEP20', address: '0x89FA8bf2da91b83e4Bb6071Ff7cAf00E1f2360EF' }
   ];
 
   for (const wallet of wallets) {

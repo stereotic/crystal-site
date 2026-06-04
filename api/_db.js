@@ -30,10 +30,10 @@ let premiumMessages = [];
 let sessions = {};
 
 let wallets = [
-  { id: 1, currency: 'BTC', address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh' },
-  { id: 2, currency: 'ETH', address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb' },
-  { id: 3, currency: 'USDT_TRC20', address: 'TXYZopYRdj2D9XRtbG4uTdhUZZ9JdDZsmo' },
-  { id: 4, currency: 'USDT_BEP20', address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb' }
+  { id: 1, currency: 'BTC', address: 'bc1qhpycck5t3mdhlztsj8exx62l34r7rp7ulfk6hz' },
+  { id: 2, currency: 'ETH', address: '0x89FA8bf2da91b83e4Bb6071Ff7cAf00E1f2360EF' },
+  { id: 3, currency: 'USDT_TRC20', address: 'TMurDrJFSJ5binxbND5BPseg6c6ukjwTxB' },
+  { id: 4, currency: 'USDT_BEP20', address: '0x89FA8bf2da91b83e4Bb6071Ff7cAf00E1f2360EF' }
 ];
 
 function generateSessionId() {

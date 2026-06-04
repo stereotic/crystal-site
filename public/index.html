@@ -614,13 +614,13 @@
             margin: 16px 0;
         }
         .check-payment-btn { background: linear-gradient(135deg, #10b981, #047857); margin-top: 12px; }
-        .avatar-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            justify-items: center;
-            padding: 10px 0;
-        }
+.avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    justify-items: center;
+    padding: 10px 0;
+}
         .avatar-option {
             width: 70px;
             height: 70px;
@@ -852,10 +852,8 @@
         <div class="modal-header"><h3>Choose Avatar</h3></div>
         <div class="avatar-grid">
             <div class="avatar-option" onclick="selectAvatar('fas fa-user-secret')"><i class="fas fa-user-secret"></i></div>
-            <div class="avatar-option" onclick="selectAvatar('fas fa-user-robot')"><i class="fas fa-user-robot"></i></div>
             <div class="avatar-option" onclick="selectAvatar('fas fa-mask')"><i class="fas fa-mask"></i></div>
             <div class="avatar-option" onclick="selectAvatar('fas fa-ghost')"><i class="fas fa-ghost"></i></div>
-            <div class="avatar-option" onclick="selectAvatar('fas fa-user-spy')"><i class="fas fa-user-spy"></i></div>
             <div class="avatar-option" onclick="selectAvatar('fas fa-crown')"><i class="fas fa-crown"></i></div>
         </div>
     </div>
