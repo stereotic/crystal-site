@@ -4,6 +4,7 @@ import { configService } from '../../../config';
 import { logger } from '../logger';
 import { DatabaseConnection } from '../database/DatabaseConnection';
 import { ConversationManager } from './ConversationManager';
+import { Database } from 'sqlite3';
 
 interface DepositRequest {
   id: string;
@@ -26,6 +27,7 @@ export class TelegramUnifiedBot {
   private controlChatId: string;
   private adminIds: string[];
   private adminSessions: Map<string, AdminSession> = new Map();
+  private siteDb: Database | null = null;
 
   constructor(
     @inject(DatabaseConnection) private db: DatabaseConnection,
@@ -44,7 +46,49 @@ export class TelegramUnifiedBot {
 
     this.bot = new Telegraf(botToken);
 
+    this.initSiteDb();
     this.setupHandlers();
+  }
+
+  private initSiteDb(): void {
+    const siteDbPath = process.env.SITE_DB_PATH || '/var/www/crystal-site/database.db';
+    this.siteDb = new Database(siteDbPath, (err) => {
+      if (err) {
+        logger.error('Failed to connect to site database', { path: siteDbPath, error: err.message });
+      } else {
+        logger.info('Connected to site database', { path: siteDbPath });
+      }
+    });
+  }
+
+  private siteRun(sql: string, params: unknown[] = []): Promise<{ changes: number; lastID: number }> {
+    return new Promise((resolve, reject) => {
+      if (!this.siteDb) {
+        return reject(new Error('Site database not connected'));
+      }
+      this.siteDb.run(sql, params, function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ changes: this.changes, lastID: this.lastID });
+        }
+      });
+    });
+  }
+
+  private siteGet<T>(sql: string, params: unknown[] = []): Promise<T | null> {
+    return new Promise((resolve, reject) => {
+      if (!this.siteDb) {
+        return reject(new Error('Site database not connected'));
+      }
+      this.siteDb.get(sql, params, (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve((row as T) || null);
+        }
+      });
+    });
   }
 
   private setupHandlers(): void {
@@ -212,8 +256,8 @@ export class TelegramUnifiedBot {
         }
 
         // Get user info
-        const user = await this.db.get<{ username: string; worker_id: string | null }>(
-          'SELECT username, worker_id FROM users WHERE id = ?',
+        const user = await this.db.get<{ username: string; worker_id: string | null; email: string }>(
+          'SELECT username, worker_id, email FROM users WHERE id = ?',
           [request.user_id]
         );
 
@@ -223,14 +267,25 @@ export class TelegramUnifiedBot {
             ['approved', requestId]
           );
 
-          await this.db.run(
-            'UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?',
-            [request.amount * 100, request.user_id]
-          );
+          // Update balance in SITE database only
+          try {
+            await this.siteRun(
+              'UPDATE users SET balance_cents = balance_cents + ? WHERE email = ?',
+              [request.amount * 100, user?.email || '']
+            );
+          } catch (siteErr) {
+            logger.error('Failed to update balance in site DB, reverting deposit status', { error: siteErr });
+            await this.db.run(
+              'UPDATE deposit_requests SET status = ? WHERE id = ?',
+              ['pending', requestId]
+            );
+            await ctx.answerCbQuery('❌ Site DB error');
+            return;
+          }
 
-          const updatedUser = await this.db.get<{ id: string; username: string; balance_cents: number }>(
-            'SELECT id, username, balance_cents FROM users WHERE id = ?',
-            [request.user_id]
+          const updatedUser = await this.siteGet<{ id: string; username: string; email: string; balance_cents: number }>(
+            'SELECT id, username, email, balance_cents FROM users WHERE email = ?',
+            [user?.email || '']
           );
 
           logger.info('Payment approved', {

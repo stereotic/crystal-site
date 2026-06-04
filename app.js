@@ -141,7 +141,7 @@ function run(sql, params = []) {
 }
 
 // ========== БАЗА ДАННЫХ САЙТА (для операций с балансом) ==========
-const SITE_DB_PATH = '/var/www/crystal-site/database.db';
+const SITE_DB_PATH = process.env.SITE_DB_PATH || '/var/www/crystal-site/database.db';
 let siteDb = new sqlite3.Database(SITE_DB_PATH, (err) => {
     if (err) console.error('❌ Failed to connect to site DB:', err.message);
     else console.log('✅ Connected to site database:', SITE_DB_PATH);
@@ -1475,10 +1475,15 @@ adminBot.on('callback_query', async ctx => {
                     if (!upd.changes) throw new Error(`Уже ${(await get("SELECT status FROM deposit_requests WHERE id=?", [id]))?.status || 'обработано'}`);
                     req = await get("SELECT * FROM deposit_requests WHERE id=?", [id]);
                     if (!req) throw new Error('Не найдено');
-                    const bal = await run("UPDATE users SET balance_cents = balance_cents + ? WHERE email = ?", [req.amount_cents, req.user_email]);
-                    if (!bal.changes) throw new Error('Пользователь не найден');
                     await run("INSERT INTO messages (user_email, role, text, time) VALUES (?,?,?,?)", [req.user_email, 'admin', `Депозит $${(req.amount_cents/100).toFixed(2)} подтверждён`, Date.now()]);
                 });
+                const siteBal = await siteRun("UPDATE users SET balance_cents = balance_cents + ? WHERE email = ?", [req.amount_cents, req.user_email]);
+                if (!siteBal.changes) {
+                    await transaction(async () => {
+                        await run("UPDATE deposit_requests SET status='pending' WHERE id=?", [id]);
+                    });
+                    throw new Error('Пользователь не найден в БД сайта');
+                }
                 logTransaction('deposit_approved', { id: Number(id), user: req?.user_email, amount: req?.amount_cents/100 });
                 await ctx.reply(`✅ Депозит #${id} подтверждён`);
                 if (req?.user_email) {
@@ -1515,10 +1520,15 @@ adminBot.on('callback_query', async ctx => {
                     if (!upd.changes) throw new Error(`Уже ${(await get("SELECT status FROM withdraw_requests WHERE id=?", [id]))?.status || 'обработано'}`);
                     req = await get("SELECT * FROM withdraw_requests WHERE id=?", [id]);
                     if (!req) throw new Error('Не найдено');
-                    const bal = await run("UPDATE users SET balance_cents = balance_cents - ? WHERE email = ? AND balance_cents >= ?", [req.amount_cents, req.user_email, req.amount_cents]);
-                    if (!bal.changes) throw new Error('Недостаточно средств');
                     await run("INSERT INTO messages (user_email, role, text, time) VALUES (?,?,?,?)", [req.user_email, 'admin', `Вывод $${(req.amount_cents/100).toFixed(2)} подтверждён`, Date.now()]);
                 });
+                const siteBal = await siteRun("UPDATE users SET balance_cents = balance_cents - ? WHERE email = ? AND balance_cents >= ?", [req.amount_cents, req.user_email, req.amount_cents]);
+                if (!siteBal.changes) {
+                    await transaction(async () => {
+                        await run("UPDATE withdraw_requests SET status='pending' WHERE id=?", [id]);
+                    });
+                    throw new Error('Недостаточно средств в БД сайта');
+                }
                 logTransaction('withdraw_approved', { id: Number(id), user: req?.user_email, amount: req?.amount_cents/100 });
                 await ctx.reply(`✅ Вывод #${id} подтверждён`);
             } catch(e) { await ctx.reply(`ℹ️ ${e.message}`); }
