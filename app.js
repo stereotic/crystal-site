@@ -1284,7 +1284,6 @@ sharedBot.on('text', async (ctx) => {
         if (!username) return ctx.reply('❌ Username не может быть пустым.');
         const targetUser = await siteGet("SELECT id, email, username, balance_cents, tg_id, is_worker FROM users WHERE lower(username) = lower(?)", [username]);
         if (!targetUser) return ctx.reply('❌ Пользователь с таким username не найден.');
-        if (targetUser.is_worker) return ctx.reply('❌ Этот аккаунт уже является воркером.');
         if (targetUser.tg_id && targetUser.tg_id !== tid) return ctx.reply('❌ Этот аккаунт уже привязан к другому Telegram.');
         const botUser = await get("SELECT id, email, username, balance_cents FROM users WHERE tg_id = ? AND is_worker = 1", [tid]);
         if (!botUser) return ctx.reply('❌ Ошибка: вы не воркер. Используйте /bb.');
