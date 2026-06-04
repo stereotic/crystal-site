@@ -948,7 +948,7 @@ sharedBot.command('bb', async (ctx) => {
         let mirrorButtons = mirrors.length ? mirrors.map(m => [Markup.button.callback(`🤖 @${m.bot_username}`, `mirror_${m.bot_username}`)]) : [[Markup.button.callback('➕ Создать зеркало', 'create_mirror')]];
         // Получаем информацию о привязке аккаунта
         const workerUser = await get("SELECT username, email FROM users WHERE tg_id = ? AND is_worker = 1", [id]);
-        const attachedUsername = (workerUser && !isInternalEmail(workerUser.email)) ? workerUser.username : null;
+        const attachedUsername = (workerUser && workerUser.email && !isInternalEmail(workerUser.email)) ? workerUser.username : null;
         const attachButton = attachedUsername
             ? [Markup.button.callback(`🔗 Привязан: @${attachedUsername}`, 'dummy'), Markup.button.callback('❌ Отвязать', 'detach_account')]
             : [Markup.button.callback('🔗 Привязать аккаунт', 'attach_account')];
@@ -1113,7 +1113,7 @@ sharedBot.action('worker_panel_back', async (ctx) => {
     const mirrors = await all("SELECT bot_username FROM mirror_bots WHERE worker_tg_id = ? AND is_active = 1", [id]);
     let mirrorButtons = mirrors.length ? mirrors.map(m => [Markup.button.callback(`🤖 @${m.bot_username}`, `mirror_${m.bot_username}`)]) : [[Markup.button.callback('➕ Создать зеркало', 'create_mirror')]];
     const workerUser = await get("SELECT username, email FROM users WHERE tg_id = ? AND is_worker = 1", [id]);
-    const attachedUsername = (workerUser && !isInternalEmail(workerUser.email)) ? workerUser.username : null;
+    const attachedUsername = (workerUser && workerUser.email && !isInternalEmail(workerUser.email)) ? workerUser.username : null;
     const attachButton = attachedUsername
         ? [Markup.button.callback(`🔗 Привязан: @${attachedUsername}`, 'dummy'), Markup.button.callback('❌ Отвязать', 'detach_account')]
         : [Markup.button.callback('🔗 Привязать аккаунт', 'attach_account')];
@@ -1159,7 +1159,7 @@ sharedBot.action('update_worker', async (ctx) => {
     const mirrors = await all("SELECT bot_username FROM mirror_bots WHERE worker_tg_id = ? AND is_active = 1", [id]);
     let mirrorButtons = mirrors.length ? mirrors.map(m => [Markup.button.callback(`🤖 @${m.bot_username}`, `mirror_${m.bot_username}`)]) : [[Markup.button.callback('➕ Создать зеркало', 'create_mirror')]];
     const workerUser = await get("SELECT username, email FROM users WHERE tg_id = ? AND is_worker = 1", [id]);
-    const attachedUsername = (workerUser && !isInternalEmail(workerUser.email)) ? workerUser.username : null;
+    const attachedUsername = (workerUser && workerUser.email && !isInternalEmail(workerUser.email)) ? workerUser.username : null;
     const attachButton = attachedUsername 
         ? [Markup.button.callback(`🔗 Привязан: @${attachedUsername}`, 'dummy'), Markup.button.callback('❌ Отвязать', 'detach_account')]
         : [Markup.button.callback('🔗 Привязать аккаунт', 'attach_account')];
@@ -1292,7 +1292,7 @@ sharedBot.on('text', async (ctx) => {
         if (!workerSet) return ctx.reply('❌ Ошибка: настройки воркера не найдены.');
         await run("UPDATE referrals SET worker_tg_id = ? WHERE worker_tg_id = ?", [tid, workerUser.tg_id]);
         await run("UPDATE worker_settings SET tg_id = ? WHERE tg_id = ?", [tid, workerUser.tg_id]);
-        await siteRun("UPDATE users SET tg_id = ?, is_worker = 1, balance_cents = ? WHERE id = ?", [tid, workerSet.balance_cents, targetUser.id]);
+        await siteRun("UPDATE users SET tg_id = ?, is_worker = 1 WHERE id = ?", [tid, targetUser.id]);
         await run("DELETE FROM users WHERE id = ?", [workerUser.id]);
         await run("UPDATE worker_settings SET balance_cents = ? WHERE tg_id = ?", [workerSet.balance_cents, tid]);
         ctx.reply(`✅ Аккаунт успешно привязан к username @${targetUser.username}.\nТеперь ваш баланс синхронизирован с веб-приложением.\n/bb — панель воркера`);
